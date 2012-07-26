@@ -17,8 +17,8 @@ def confusion_matrix(rater_a, rater_b,
   num_ratings = max_rating - min_rating + 1
   conf_mat = [[0 for i in range(num_ratings)]
   for j in range(num_ratings)]
-  for a,b in zip(rater_a,rater_b):
-    conf_mat[a-min_rating][b-min_rating] += 1
+  for a,b in zip(rater_a, rater_b):
+    conf_mat[a - min_rating][b - min_rating] += 1
   return conf_mat
 
 def histogram(ratings, min_rating=None, max_rating=None):
@@ -56,12 +56,12 @@ def quadratic_weighted_kappa(rater_a, rater_b, min_rating = 0, max_rating = 3):
     min_rating = min(reduce(min, rater_a), reduce(min, rater_b))
   if max_rating is None:
     max_rating = max(reduce(max, rater_a), reduce(max, rater_b))
-  conf_mat = confusion_matrix(rater_a, rater_b, min_rating, max_rating)
+  conf_mat = confusion_matrix(rater_a, rater_b, min_rating=min_rating, max_rating=max_rating)
   num_ratings = len(conf_mat)
   num_scored_items = float(len(rater_a))
 
-  hist_rater_a = histogram(rater_a, min_rating, max_rating)
-  hist_rater_b = histogram(rater_b, min_rating, max_rating)
+  hist_rater_a = histogram(rater_a, min_rating=min_rating, max_rating=max_rating)
+  hist_rater_b = histogram(rater_b, min_rating=min_rating, max_rating=max_rating)
 
   numerator = 0.0
   denominator = 0.0
