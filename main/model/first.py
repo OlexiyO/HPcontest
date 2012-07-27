@@ -1,21 +1,20 @@
 import gflags
 import sys
-from main.io import convert
+from main.io import convert, io
 from main.io.feature import *
 
 FLAGS = gflags.FLAGS
 
 __author__ = 'Olexiy Oryeshko (olexiyo@gmail.com)'
 
+gflags.DEFINE_string('model_scores_file', 'model_scores', 'File to save output.')
+
 
 def main():
-  # TODO: Parse only 3 columns.
-  convert.ParseTestData(FLAGS.raw_data_file)
-  score = ParseFeature('score')
-  other_score = ParseFeature('other_score')
-  average_score = FloatFeature(((a + b)/2. for a, b in zip(score, other_score)), 'Average score')
-  average_score.SaveToFile('average_score')
-  OutputAsScore(average_score, 'ole_score')
+  convert.ParseLeaderboardData(FLAGS.raw_data_file)
+  ids = ParseFeature('ids')
+  vals = IntFeature([id % 4 for id in ids], '')
+  io.SaveAsScores(ids, vals, FLAGS.model_scores_file)
 
 
 if __name__ == '__main__':

@@ -35,6 +35,25 @@ def ParseTestData(filepath):
   feature.StringFeature(answer, 'Original: answer').SaveToFile('answer')
 
 
+def ParseLeaderboardData(filepath):
+  ids, question, answer = [], [], []
+  with open(filepath) as fin:
+    past_first = False
+    for line in fin:
+      # First line is crap
+      if not past_first:
+        past_first = True
+        continue
+      cols = io.SplitIntoN(line, 3)
+      ids.append(cols[0])
+      question.append(cols[1])
+      answer.append(cols[2])
+
+  feature.IntFeature(map(int, ids), 'Original: id').SaveToFile('ids')
+  feature.IntFeature(map(int, question), 'Original: question').SaveToFile('question')
+  feature.StringFeature(answer, 'Original: answer').SaveToFile('answer')
+
+
 def main():
   ParseTestData(FLAGS.raw_data_file)
 
