@@ -1,5 +1,5 @@
 import re
-from main.io.feature import Binary, ParseFeature, Unary, IntFeature
+from main.io.olefeature import Binary, Unary, IntFeature, G
 
 __author__ = 'Olexiy Oryeshko (olexiyo@gmail.com)'
 
@@ -24,31 +24,17 @@ def NumSentences(text):
           len(re.findall('\. *\Z', s)))
 
 
-def GenerateKnownFeatures():
+def GenerateBasicFeatures():
   assert os.path.isdir(FLAGS.data_dir)
   assert Exists('ids')
   assert Exists('score')
   assert Exists('other_score')
   assert Exists('question')
   assert Exists('answer')
-  for name in ['ids', 'score', 'other_score', 'question', 'answer']:
-    globals()[name] = ParseFeature(name)
-
-  if not Exists('average_score'):
-     F = lambda (a, b): (a + b) / 2.
-     av_score = Binary(score, other_score, F, comment='average_score')
-     av_score.SaveToFile('average_score')
-
-  if not Exists('answer_length'):
-    answer_length = Unary(answer, len, comment='answer_length', T=IntFeature)
-    answer_length .SaveToFile('answer_length')
-
-  if not Exists('num_words'):
-    num_words = Unary(answer, NumWords, comment='num_words', T=IntFeature)
-    num_words.SaveToFile('num_words')
-
-  if not Exists('num_sentences'):
-    num_sentences = Unary(answer, NumSentences, comment='num_sentences', T=IntFeature)
-    num_sentences.SaveToFile('num_sentences')
-
-
+  G.Define('average_score', Binary(G.score, G.other_score, lambda (a, b): (a + b / 2.)))
+  G.Define('consistent_score', Binary(G.score, G.other_score, lambda (a, b): 1 if abs(a - b) <= 1 else 0, T=IntFeature))
+  G.Define('good_score', Binary(G.average_score, G.consistent_score, lambda (a, b): a if b else -10))
+  G.Define('answer_length', Unary(G.answer, len, comment='answer_length', T=IntFeature))
+  G.Define('num_words', Unary(G.answer, NumWords, comment='NumWords', T=IntFeature))
+  G.Define('num_sentences', Unary(G.answer, NumSentences, comment='num_sentences', T=IntFeature))
+  G.Define('word_length', Binary(G.num_words, G.answer_length, lambda (a,b): float(a) / b))

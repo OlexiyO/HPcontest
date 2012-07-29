@@ -1,5 +1,5 @@
 from main.io.io import SplitIntoN
-from main.math import metrics
+from main.metrics import kappa
 
 __author__ = 'Olexiy Oryeshko (olexiyo@gmail.com)'
 
@@ -7,16 +7,38 @@ import gflags
 import os
 
 FLAGS = gflags.FLAGS
-gflags.DEFINE_string('data_dir', 'c:\\Dev\\Kaggle\\asap-sas\\output', 'Input/output directory.')
+gflags.DEFINE_string('data_dir', 'c:\\Dev\\Kaggle\\asap-sas\\features', 'Input/output directory.')
 gflags.DEFINE_bool('use_average_score', False, 'Whether use average score as ideal.')
 # All docs with ids % validation_denom == validation_nom considered to be CV set.
 gflags.DEFINE_integer('validation_nom', 0, '.')
 gflags.DEFINE_integer('validation_denom', 5, '.')
 
 
-class Feature(list):
+class FeatureStorage(object):
+  def __init__(self):
+    self.__dict__['_features'] = dict(ParseFromDir(FLAGS.data_dir))
+
+  def Define(self, name, what):
+    if name not in self._features:
+      what.SaveToFile(name)
+      self._features[name] = what
+
+  def __getattr__(self, name):
+    return self._features[name]
+
+  def __setattr__(self, name, value):
+    raise NotImplementedError()
+
+  def __getitem__(self, name):
+    raise NotImplementedError()
+
+  def __setitem__(self, name):
+    raise NotImplementedError()
+
+
+class _Feature(list):
   def __init__(self, values, comment):
-    super(Feature, self).__init__(values)
+    super(_Feature, self).__init__(values)
     self._comment = comment
 
   def GetType(self):
@@ -35,7 +57,7 @@ class Feature(list):
       fout.writelines('%d%s%s\n' % (t[0], separator, self.PrintValue(t[1])) for t in enumerate(self))
 
 
-class IntFeature(Feature):
+class IntFeature(_Feature):
   def PrintValue(self, value):
     return '%d' % value
 
@@ -43,7 +65,7 @@ class IntFeature(Feature):
     return 'INT'
 
 
-class StringFeature(Feature):
+class StringFeature(_Feature):
   def PrintValue(self, value):
     return value
 
@@ -51,12 +73,16 @@ class StringFeature(Feature):
     return 'STRING'
 
 
-class FloatFeature(Feature):
+class FloatFeature(_Feature):
   def PrintValue(self, value):
     return '%f' % value
 
   def GetType(self):
       return 'FLOAT'
+
+
+def ParseFromDir(dirpath):
+  return [(name, ParseFeature(name)) for name in os.listdir(dirpath)]
 
 
 def ParseFeature(filename):
@@ -75,32 +101,6 @@ def ParseFeature(filename):
   return res
 
 
-def ToScore(scores):
-  return map(int, map(round, scores))
-
-
-def Filter(what, noms, denom):
-  assert all((0 <= N < denom) for N in noms)
-  return [w for n, w in enumerate(what) if n % denom in noms]
-
-
-def Eval(scores):
-  golden = ParseFeature('average_score') if FLAGS.use_average_score else ParseFeature('score')
-  assert len(golden) == len(scores), '%d != %d' % (len(golden), len(scores))
-  good_noms = [k for k in range(FLAGS.validation_denom) if k != FLAGS.validation_nom]
-  return metrics.quadratic_weighted_kappa(
-    Filter(ToScore(scores), good_noms, FLAGS.validation_denom),
-    Filter(golden, good_noms, FLAGS.validation_denom))
-
-
-def EvalOnValidation(scores):
-  golden = ParseFeature('average_score') if FLAGS.use_average_score else ParseFeature('score')
-  assert len(golden) == len(scores), '%d != %d' % (len(golden), len(scores))
-  return metrics.quadratic_weighted_kappa(
-    Filter(ToScore(scores), [FLAGS.validation_nom], FLAGS.validation_denom),
-    Filter(golden, [FLAGS.validation_nom], FLAGS.validation_denom))
-
-
 def OutputAsScore(what, filename):
   ids = ParseFeature('ids')
   assert len(ids) == len(what)
@@ -110,9 +110,12 @@ def OutputAsScore(what, filename):
     fout.writelines('%d,%d\n' % t for t in zip(ids, ToScore(what)))
 
 
-def Binary(fA, fB, Func, comment, T=FloatFeature):
+def Binary(fA, fB, Func, comment='', T=FloatFeature):
   return T(map(Func, zip(fA, fB)), comment)
 
 
 def Unary(fA, Func, comment, T=FloatFeature):
   return T(map(Func, fA), comment)
+
+
+G = FeatureStorage()

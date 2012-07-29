@@ -1,7 +1,7 @@
 import gflags
 import sys
 from main.io import convert, io
-from main.io.feature import *
+from main.io.olefeature import *
 
 FLAGS = gflags.FLAGS
 

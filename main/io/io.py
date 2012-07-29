@@ -19,5 +19,3 @@ def SaveAsScores(ids, vals, filename):
   with open(filepath, 'w') as f:
     f.write('id,essay_score\n')
     f.writelines('%d,%d\n' % t for t in zip(ids, vals))
-
-

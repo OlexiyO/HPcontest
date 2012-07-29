@@ -1,6 +1,6 @@
 __author__ = 'Olexiy Oryeshko (olexiyo@gmail.com)'
 
-from main.io import io, feature
+from main.io import io, olefeature
 
 import gflags
 import sys
@@ -28,11 +28,11 @@ def ParseTestData(filepath):
       other_score.append(cols[3])
       answer.append(cols[4])
 
-  feature.IntFeature(map(int, ids), 'Original: id').SaveToFile('ids')
-  feature.IntFeature(map(int, question), 'Original: question').SaveToFile('question')
-  feature.IntFeature(map(int, score), 'Original: score').SaveToFile('score')
-  feature.IntFeature(map(int, other_score), 'Original: other_score').SaveToFile('other_score')
-  feature.StringFeature(answer, 'Original: answer').SaveToFile('answer')
+  olefeature.IntFeature(map(int, ids), 'Original: id').SaveToFile('ids')
+  olefeature.IntFeature(map(int, question), 'Original: question').SaveToFile('question')
+  olefeature.IntFeature(map(int, score), 'Original: score').SaveToFile('score')
+  olefeature.IntFeature(map(int, other_score), 'Original: other_score').SaveToFile('other_score')
+  olefeature.StringFeature(answer, 'Original: answer').SaveToFile('answer')
 
 
 def ParseLeaderboardData(filepath):
@@ -49,9 +49,9 @@ def ParseLeaderboardData(filepath):
       question.append(cols[1])
       answer.append(cols[2])
 
-  feature.IntFeature(map(int, ids), 'Original: id').SaveToFile('ids')
-  feature.IntFeature(map(int, question), 'Original: question').SaveToFile('question')
-  feature.StringFeature(answer, 'Original: answer').SaveToFile('answer')
+  olefeature.IntFeature(map(int, ids), 'Original: id').SaveToFile('ids')
+  olefeature.IntFeature(map(int, question), 'Original: question').SaveToFile('question')
+  olefeature.StringFeature(answer, 'Original: answer').SaveToFile('answer')
 
 
 def main():
