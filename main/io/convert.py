@@ -1,6 +1,8 @@
+from main.io.signal import MaxScore, SplitIntoN
+
 __author__ = 'Olexiy Oryeshko (olexiyo@gmail.com)'
 
-from main.io import io, olefeature
+from main.io import io, signal
 
 import gflags
 import sys
@@ -21,18 +23,21 @@ def ParseTestData(filepath):
       if not past_first:
         past_first = True
         continue
-      cols = io.SplitIntoN(line, 5)
+      cols = SplitIntoN(line, 5)
       ids.append(cols[0])
-      question.append(cols[1])
+      q = int(cols[1]) - 1
+      question.append(q)
       score.append(cols[2])
       other_score.append(cols[3])
       answer.append(cols[4])
+      assert 0 <= int(cols[2]) <= MaxScore(q), line
+      assert 0 <= int(cols[3]) <= MaxScore(q), line
 
-  olefeature.IntFeature(map(int, ids), 'Original: id').SaveToFile('ids')
-  olefeature.IntFeature(map(int, question), 'Original: question').SaveToFile('question')
-  olefeature.IntFeature(map(int, score), 'Original: score').SaveToFile('score')
-  olefeature.IntFeature(map(int, other_score), 'Original: other_score').SaveToFile('other_score')
-  olefeature.StringFeature(answer, 'Original: answer').SaveToFile('answer')
+  signal.IntFeature(map(int, ids), 'Original: id').SaveToFile('ids')
+  signal.IntFeature(map(int, question), 'Original: question').SaveToFile('question')
+  signal.IntFeature(map(int, score), 'Original: score').SaveToFile('score')
+  signal.IntFeature(map(int, other_score), 'Original: other_score').SaveToFile('other_score')
+  signal.StringFeature(answer, 'Original: answer').SaveToFile('answer')
 
 
 def ParseLeaderboardData(filepath):
@@ -49,9 +54,9 @@ def ParseLeaderboardData(filepath):
       question.append(cols[1])
       answer.append(cols[2])
 
-  olefeature.IntFeature(map(int, ids), 'Original: id').SaveToFile('ids')
-  olefeature.IntFeature(map(int, question), 'Original: question').SaveToFile('question')
-  olefeature.StringFeature(answer, 'Original: answer').SaveToFile('answer')
+  signal.IntFeature(map(int, ids), 'Original: id').SaveToFile('ids')
+  signal.IntFeature(map(int, question), 'Original: question').SaveToFile('question')
+  signal.StringFeature(answer, 'Original: answer').SaveToFile('answer')
 
 
 def main():

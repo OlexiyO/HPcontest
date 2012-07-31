@@ -1,6 +1,3 @@
-from main.io.io import SplitIntoN
-from main.metrics import kappa
-
 __author__ = 'Olexiy Oryeshko (olexiyo@gmail.com)'
 
 import gflags
@@ -14,17 +11,58 @@ gflags.DEFINE_integer('validation_nom', 0, '.')
 gflags.DEFINE_integer('validation_denom', 5, '.')
 
 
+def SplitIntoN(line, cnt):
+  tmp = line.strip().split()
+  assert len(tmp) >= cnt, 'Expected at least %d parts in line: "%s"' % (cnt, line)
+  return tmp[:cnt - 1] + [' '.join(tmp[cnt - 1:])]
+
+
+def ParseFeature(filename):
+  filepath = os.path.join(FLAGS.data_dir, filename)
+  assert os.path.exists(filepath), filepath
+  FS = {'STRING': str, 'INT': int, 'FLOAT': float}
+  CLASSES = {'STRING': StringFeature, 'INT': IntFeature, 'FLOAT': FloatFeature}
+  with open(filepath) as fin:
+    line_raw = fin.readline()
+    assert line_raw[0] == '#', line_raw
+    T = line_raw.strip()[2:]
+    F = FS[T]
+    vals = (F(SplitIntoN(line, 2)[1]) for line in fin if line[0] != '#')
+    res = CLASSES[T](vals, 'Parsed from %s' % filepath)
+
+  res.name = filename
+  return res
+
+
+def ParseFromDir(dirpath):
+  return [(name, ParseFeature(name)) for name in os.listdir(dirpath)]
+
+
 class FeatureStorage(object):
   def __init__(self):
-    self.__dict__['_features'] = dict(ParseFromDir(FLAGS.data_dir))
+    self.__dict__['_features'] = {} #dict(ParseFromDir(FLAGS.data_dir))
+
+  def _FileExists(self, name):
+    return os.path.exists(os.path.join(FLAGS.data_dir, name))
+
+  def _KnownFeature(self, name):
+    return name in self._features or self._FileExists(name)
 
   def Define(self, name, what):
-    if name not in self._features:
+    if not self._KnownFeature(name):
       what.SaveToFile(name)
       self._features[name] = what
+      what.name = name
 
   def __getattr__(self, name):
-    return self._features[name]
+    if name in self._features:
+      return self._features[name]
+    # Set default will call ParseFeature first.
+    assert self._FileExists(name)
+    print 'Parsing', name
+    feat = ParseFeature(name)
+    self._features[name] = feat
+    return feat
 
   def __setattr__(self, name, value):
     raise NotImplementedError()
@@ -81,35 +119,6 @@ class FloatFeature(_Feature):
       return 'FLOAT'
 
 
-def ParseFromDir(dirpath):
-  return [(name, ParseFeature(name)) for name in os.listdir(dirpath)]
-
-
-def ParseFeature(filename):
-  filepath = os.path.join(FLAGS.data_dir, filename)
-  assert os.path.exists(filepath), filepath
-  FS = {'STRING': str, 'INT': int, 'FLOAT': float}
-  CLASSES = {'STRING': StringFeature, 'INT': IntFeature, 'FLOAT': FloatFeature}
-  with open(filepath) as fin:
-    line_raw = fin.readline()
-    assert line_raw[0] == '#', line_raw
-    T = line_raw.strip()[2:]
-    F = FS[T]
-    vals = (F(SplitIntoN(line, 2)[1]) for line in fin if line[0] != '#')
-    res = CLASSES[T](vals, 'Parsed from %s' % filepath)
-
-  return res
-
-
-def OutputAsScore(what, filename):
-  ids = ParseFeature('ids')
-  assert len(ids) == len(what)
-  filepath = os.path.join(FLAGS.data_dir, filename)
-  assert not os.path.exists(filepath), filepath
-  with open(filepath, 'w') as fout:
-    fout.writelines('%d,%d\n' % t for t in zip(ids, ToScore(what)))
-
-
 def Binary(fA, fB, Func, comment='', T=FloatFeature):
   return T(map(Func, zip(fA, fB)), comment)
 
@@ -119,3 +128,13 @@ def Unary(fA, Func, comment, T=FloatFeature):
 
 
 G = FeatureStorage()
+
+
+UNKNOWN = -111
+NUM_QUESTIONS = 10
+MAX_SCORES = [3, 3, 2, 2, 3, 3, 2, 2, 2, 2]
+assert len(MAX_SCORES) == NUM_QUESTIONS
+
+def MaxScore(question):
+  assert 0 <= question < NUM_QUESTIONS
+  return MAX_SCORES[question]

@@ -1,7 +1,7 @@
 import gflags
 import sys
-from main.io import convert, io
-from main.io.olefeature import *
+from main.io import io
+from main.io.signal import *
 
 FLAGS = gflags.FLAGS
 
@@ -11,7 +11,6 @@ gflags.DEFINE_string('model_scores_file', 'model_scores', 'File to save output.'
 
 
 def main():
-  convert.ParseLeaderboardData(FLAGS.raw_data_file)
   ids = ParseFeature('ids')
   vals = IntFeature([id % 4 for id in ids], '')
   io.SaveAsScores(ids, vals, FLAGS.model_scores_file)

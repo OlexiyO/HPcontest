@@ -1,7 +1,9 @@
-from numpy.ma.core import ids
-from main.experiments.known_features import GenerateBasicFeatures
+from main.base import util
+from main.experiments.known_signals import GenerateBasicFeatures
+from main.experiments.misc import *
 
-from main.io.olefeature import *
+from main.io.signal import *
+from main.metrics import metrics
 
 __author__ = 'Olexiy Oryeshko (olexiyo@gmail.com)'
 
@@ -15,16 +17,15 @@ FLAGS = gflags.FLAGS
 ALL_FEATURES = ['ids', 'score', 'other_score', 'question', 'answer',
                 'average_score']
 
-
 def PrintInOrder(D):
   vals = sorted(D.iteritems(), key=lambda x: -x[1])
   return '{\n%s}\n' % ',\n'.join('"%s": %d' % v for v in vals)
 
 
-def CountWords(q):
+def BuildCorpus(q):
   D = {}
-  for n, text in enumerate(answer):
-    if question[n] != q:
+  for n, text in enumerate(G.answer):
+    if G.question[n] != q:
       continue
     words = map(lambda x: x.lower(), re.findall('\w+', text))
     for w in words:
@@ -35,10 +36,66 @@ def CountWords(q):
     f.write('%s' % PrintInOrder(D))
 
 
+def ScoresForModel(model, vars, extra_filter=util.FTrue):
+  return [model(ind, vars) if extra_filter(ind) else -111 for ind in range(len(G.ids))]
+
+
 def main():
   GenerateBasicFeatures()
+  # TODO: try to integrate some other signal into "all zeroes" model
+  # TODO: Find most popular words for each question, try to use
+  # TODO: use different target function
 
+  '''
+  for id, elem in enumerate(G.num_words):
+      if elem < 3:
+        print id, G.question[id], G.score[id], G.other_score[id], G.answer[id]
+  '''
 
+  vars = {'min_word_cutoff': 3.,
+          'ans_len': .5,
+          'num_sent': 10., }
+  FMod5 = lambda ind: (ind % 5) != 0
+  FMod51 = lambda ind: (ind % 5) == 1
+  FValidation = lambda ind: not FMod5(ind)
+  # TODO: compute scores for pub leaderboard.
+  scores = ScoresForModel(VerySimple2, vars)
+
+  """
+  data2 = []
+  data3 = []
+  # TODO: try return 0 always.
+  ks = range(5, 100, 5)
+  for k in range(5, 100, 5):
+    vars['min_word_cutoff'] = k
+    scores2 = ScoresForModel(VerySimple2, vars, extra_filter=FMod51)
+    data2.append(metrics.EvalPerQuestion(scores2, extra_filter=FMod51))
+    scores3 = ScoresForModel(VerySimple3, vars, extra_filter=FMod51)
+    data3.append(metrics.EvalPerQuestion(scores3, extra_filter=FMod51))
+    #print k, '%.2f' % (sum(v2) / len(v2)), ['%.3f' % v for v in v2]
+
+  cutoff = []
+  value = []
+  score = []
+  for q in range(10):
+    s2 = [(-data2[i][q], (k, 50)) for i, k in enumerate(ks)]
+    s3 = [(-data3[i][q], (k, 100)) for i, k in enumerate(ks)]
+    x = sorted(s2 + s3)
+    score.append(-x[0][0])
+    cutoff.append(x[0][1][0])
+    value.append(x[0][1][1])
+
+  print cutoff
+  print value
+  print score
+  """
+
+  # TODO: cross validation.
+
+  #v1 = metrics.EvalPerQuestion(scores, extra_filter=FMod51)
+  #print ['%.3f' % v for v in v1]
+  #v2 = metrics.EvalPerQuestion(scores, extra_filter=FValidation)
+  #print ['%.3f' % v for v in v2]
 
   '''
   print 'scores', Eval(score), EvalOnValidation(score)

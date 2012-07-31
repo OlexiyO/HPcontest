@@ -1,5 +1,6 @@
 import math
-from main.io.olefeature import G
+from main.base import util
+from main.io.signal import G
 from main.metrics.metrics import Eval
 
 __author__ = 'Olexiy Oryeshko (olexiyo@gmail.com)'
@@ -9,10 +10,10 @@ def Func(id, vars):
   return vars['a'] * G.num_words[id] + vars['b'] * G.word_length[id]
 
 
-def DoMe(Func, vars, questions, filter, step):
+def Minimize(Func, vars, questions, filter, step=1e-7):
   def RealF(v):
     return Cost(Func, v, questions, filter)
-  return GradientDescent(RealF, vars, num_steps=10, step=1e-7)
+  return GradientDescent(RealF, vars, num_steps=100, step=step)
 
 
 def Gradient(target, vars, step=1e-8):
@@ -64,8 +65,8 @@ def MoveInDirection(target, grad, ivars, istep):
   return vars
 
 
-def Cost(Func, vars, questions, filter):
+def Cost(Func, vars, questions, filter=util.FTrue):
   assert questions
   assert vars
-  results = [Func(ind, vars) for ind, q in enumerate(G.question) if q in questions and filter(ind)]
+  results = [Func(ind, vars) if q in questions and filter(ind) else -10 for ind, q in enumerate(G.question)]
   return Eval(results, filter, questions)

@@ -1,4 +1,4 @@
-from main.experiments.known_features import NumWords, NumSentences
+from main.experiments.known_signals import NumWords, NumSentences
 
 __author__ = 'Olexiy Oryeshko (olexiyo@gmail.com)'
 

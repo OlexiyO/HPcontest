@@ -1,5 +1,5 @@
 import re
-from main.io.olefeature import Binary, Unary, IntFeature, G
+from main.io.signal import Binary, Unary, IntFeature, G
 
 __author__ = 'Olexiy Oryeshko (olexiyo@gmail.com)'
 
@@ -37,4 +37,4 @@ def GenerateBasicFeatures():
   G.Define('answer_length', Unary(G.answer, len, comment='answer_length', T=IntFeature))
   G.Define('num_words', Unary(G.answer, NumWords, comment='NumWords', T=IntFeature))
   G.Define('num_sentences', Unary(G.answer, NumSentences, comment='num_sentences', T=IntFeature))
-  G.Define('word_length', Binary(G.num_words, G.answer_length, lambda (a,b): float(a) / b))
+  G.Define('word_length', Binary(G.num_words, G.answer_length, lambda (a,b): float(b) / a))
