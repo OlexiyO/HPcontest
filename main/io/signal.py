@@ -13,7 +13,8 @@ gflags.DEFINE_integer('validation_denom', 5, '.')
 
 def SplitIntoN(line, cnt):
   tmp = line.strip().split()
-  assert len(tmp) >= cnt, 'Expected at least %d parts in line: "%s"' % (cnt, line)
+  while len(tmp) < cnt:
+    tmp += ' '
   return tmp[:cnt - 1] + [' '.join(tmp[cnt - 1:])]
 
 
@@ -38,19 +39,22 @@ def ParseFromDir(dirpath):
   return [(name, ParseFeature(name)) for name in os.listdir(dirpath)]
 
 
+# TODO: easy way to get all values for question Q.
+
 class FeatureStorage(object):
   def __init__(self):
-    self.__dict__['_features'] = {} #dict(ParseFromDir(FLAGS.data_dir))
+    self.__dict__['_features'] = {}
 
   def _FileExists(self, name):
     return os.path.exists(os.path.join(FLAGS.data_dir, name))
 
   def _KnownFeature(self, name):
-    return name in self._features or self._FileExists(name)
+    return (name in self._features) or self._FileExists(name)
 
-  def Define(self, name, what):
-    if not self._KnownFeature(name):
-      what.SaveToFile(name)
+  def Define(self, name, what, override=False, save=True):
+    if override or not self._KnownFeature(name):
+      if save:
+        what.SaveToFile(name)
       self._features[name] = what
       what.name = name
 
@@ -93,6 +97,12 @@ class _Feature(list):
         fout.write('# %s\n' % self.GetType())
         fout.write('# %s\n' % self._comment)
       fout.writelines('%d%s%s\n' % (t[0], separator, self.PrintValue(t[1])) for t in enumerate(self))
+
+  def ValuesForQuestion(self, q):
+    return [value for id, value in enumerate(self) if G.question[id] == q]
+
+  def ItemsForQuestion(self, q):
+    return [(id, value) for id, value in enumerate(self) if G.question[id] == q]
 
 
 class IntFeature(_Feature):
@@ -138,3 +148,5 @@ assert len(MAX_SCORES) == NUM_QUESTIONS
 def MaxScore(question):
   assert 0 <= question < NUM_QUESTIONS
   return MAX_SCORES[question]
+
+

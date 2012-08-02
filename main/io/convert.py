@@ -1,4 +1,6 @@
-from main.io.signal import MaxScore, SplitIntoN
+from main.base import util
+from main.experiments.processing import BuildCorpus
+from main.io.signal import MaxScore, SplitIntoN, G
 
 __author__ = 'Olexiy Oryeshko (olexiyo@gmail.com)'
 
@@ -15,7 +17,7 @@ gflags.MarkFlagAsRequired('raw_data_file')
 
 
 def ParseTestData(filepath):
-  ids, question, score, other_score, answer = [], [], [], [], []
+  ids, question, score, other_score, raw_answer = [], [], [], [], []
   with open(filepath) as fin:
     past_first = False
     for line in fin:
@@ -29,7 +31,7 @@ def ParseTestData(filepath):
       question.append(q)
       score.append(cols[2])
       other_score.append(cols[3])
-      answer.append(cols[4])
+      raw_answer.append(cols[4])
       assert 0 <= int(cols[2]) <= MaxScore(q), line
       assert 0 <= int(cols[3]) <= MaxScore(q), line
 
@@ -37,11 +39,11 @@ def ParseTestData(filepath):
   signal.IntFeature(map(int, question), 'Original: question').SaveToFile('question')
   signal.IntFeature(map(int, score), 'Original: score').SaveToFile('score')
   signal.IntFeature(map(int, other_score), 'Original: other_score').SaveToFile('other_score')
-  signal.StringFeature(answer, 'Original: answer').SaveToFile('answer')
+  signal.StringFeature(raw_answer, 'Original: raw_answer').SaveToFile('raw_answer')
 
 
 def ParseLeaderboardData(filepath):
-  ids, question, answer = [], [], []
+  ids, question, raw_answer = [], [], []
   with open(filepath) as fin:
     past_first = False
     for line in fin:
@@ -49,14 +51,15 @@ def ParseLeaderboardData(filepath):
       if not past_first:
         past_first = True
         continue
-      cols = io.SplitIntoN(line, 3)
+      cols = SplitIntoN(line, 3)
       ids.append(cols[0])
-      question.append(cols[1])
-      answer.append(cols[2])
+      question.append(int(cols[1]) - 1)
+      raw_answer.append(cols[2])
 
   signal.IntFeature(map(int, ids), 'Original: id').SaveToFile('ids')
   signal.IntFeature(map(int, question), 'Original: question').SaveToFile('question')
-  signal.StringFeature(answer, 'Original: answer').SaveToFile('answer')
+  signal.StringFeature(raw_answer, 'Original: raw_answer').SaveToFile('raw_answer')
+
 
 
 def main():

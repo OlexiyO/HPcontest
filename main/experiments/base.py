@@ -1,9 +1,11 @@
 from main.base import util
-from main.experiments.known_signals import GenerateBasicFeatures
+from main.experiments import processing
+from main.experiments.known_signals import GenerateBasicFeatures, GenerateTrainingFeatures
 from main.experiments.misc import *
+from main.io import signal
 
-from main.io.signal import *
 from main.metrics import metrics
+from main.model import models
 
 __author__ = 'Olexiy Oryeshko (olexiyo@gmail.com)'
 
@@ -14,34 +16,101 @@ import sys
 import gflags
 FLAGS = gflags.FLAGS
 
-ALL_FEATURES = ['ids', 'score', 'other_score', 'question', 'answer',
-                'average_score']
-
-def PrintInOrder(D):
-  vals = sorted(D.iteritems(), key=lambda x: -x[1])
-  return '{\n%s}\n' % ',\n'.join('"%s": %d' % v for v in vals)
-
-
-def BuildCorpus(q):
-  D = {}
-  for n, text in enumerate(G.answer):
-    if G.question[n] != q:
-      continue
-    words = map(lambda x: x.lower(), re.findall('\w+', text))
-    for w in words:
-      D[w] = D.get(w, 0) + 1
-
-  DIR = 'c:\\Dev\\Kaggle\\asap-sas\\help_data'
-  with open(os.path.join(DIR, 'dict_%d' % q), 'w') as f:
-    f.write('%s' % PrintInOrder(D))
-
 
 def ScoresForModel(model, vars, extra_filter=util.FTrue):
   return [model(ind, vars) if extra_filter(ind) else -111 for ind in range(len(G.ids))]
 
 
-def main():
+def FilterSpaces1(corpus, text):
+  dd = set([])
+  for id, t in enumerate(text):
+    words = t.split()
+    W = len(words)
+    for n in range(W - 1):
+      w1 = util.OnlyLetters(words[n].lower())
+      w2 = util.OnlyLetters(words[n + 1].lower())
+      if w1 == 'dog' and w2 == 'house':
+        continue
+      common = w1 + w2
+      if w1 not in corpus or w2 not in corpus:
+        continue
+      if (common in corpus) and corpus[common] >= min(corpus[w1], corpus[w2]):
+        dd.add((w1, w2))
+  return dd
+
+def FilterSpaces2(corpus, text):
+  dd = set([])
+  for id, t in enumerate(text):
+    words = t.split()
+    W = len(words)
+    for n in range(W - 1):
+      w1 = util.OnlyLetters(words[n].lower())
+      w2 = util.OnlyLetters(words[n + 1].lower())
+      if w1 == 'dog' and w2 == 'house':
+        continue
+      common = w1 + w2
+      if w1 not in corpus or w2 not in corpus:
+        continue
+      if (common in corpus) and corpus[common] >= max(corpus[w1], corpus[w2]) - 1:
+        dd.add((w1, w2))
+  return dd
+
+
+def FilterSpaces3(corpus, text):
+  dd = set([])
+  for id, t in enumerate(text):
+    words = t.split()
+    W = len(words)
+    for n in range(W - 1):
+      w1 = util.OnlyLetters(words[n].lower())
+      w2 = util.OnlyLetters(words[n + 1].lower())
+      if w1 == 'dog' and w2 == 'house':
+        continue
+      while w2 and not w2[-1].isalnum():
+        w2 = w2[:-1]
+      if w1 not in corpus or w2 not in corpus:
+        continue
+      common = w1 + w2
+      if (common in corpus) and corpus[common] >= max(corpus[w1], corpus[w2]) - 10:
+        dd.add((w1, w2))
+  return dd
+
+
+def TryFixing():
+  #processing.ProcessRawAnswer()
   GenerateBasicFeatures()
+  return
+  v = processing.BuildCorpus(9, G.answer.ValuesForQuestion(9))
+  tt = G.answer.ValuesForQuestion(9)
+  for a, b in v.iteritems():
+    if len(a) == 1:
+      pass
+      #print a, b
+  good1 = FilterSpaces1(v, tt)
+  good2 = FilterSpaces2(v, tt)
+  good3 = FilterSpaces3(v, tt)
+
+  dd = good3 - good2
+
+  for (w1, w2) in dd:
+    common = w1 + w2
+    print w1, w2, common, v[w1], v[w2], v[common]
+  return
+
+
+def CheckModel(model, selector):
+  scores = ScoresForModel(model, {}, extra_filter=selector)
+  v2 = metrics.EvalPerQuestion(scores, extra_filter=selector)
+  print '%.2f' % (sum(v2) / len(v2)), ['%.3f' % v for v in v2]
+
+
+def main():
+
+  # TODO: show difference between models!
+
+  GenerateTrainingFeatures()
+  GenerateBasicFeatures()
+
   # TODO: try to integrate some other signal into "all zeroes" model
   # TODO: Find most popular words for each question, try to use
   # TODO: use different target function
@@ -59,38 +128,57 @@ def main():
   FMod51 = lambda ind: (ind % 5) == 1
   FValidation = lambda ind: not FMod5(ind)
   # TODO: compute scores for pub leaderboard.
-  scores = ScoresForModel(VerySimple2, vars)
+  #scores = ScoresForModel(VerySimple2, vars)
 
-  """
+  print 'Current'
+  for k in range(5):
+    FFM = lambda ind: (ind % 5) == k
+    CheckModel(models.Version0, FFM)
+
+  for k in range(5):
+    FFM = lambda ind: (ind % 5) == k
+    CheckModel(models.Version1, FFM)
+
+  return
+  data0 = []
+  data1 = []
   data2 = []
   data3 = []
-  # TODO: try return 0 always.
   ks = range(5, 100, 5)
-  for k in range(5, 100, 5):
+  for k in ks:
     vars['min_word_cutoff'] = k
+    scores0 = ScoresForModel(VerySimple0, vars, extra_filter=FMod51)
+    data0.append(metrics.EvalPerQuestion(scores0, extra_filter=FMod51))
+    scores1 = ScoresForModel(VerySimple1, vars, extra_filter=FMod51)
+    data1.append(metrics.EvalPerQuestion(scores1, extra_filter=FMod51))
     scores2 = ScoresForModel(VerySimple2, vars, extra_filter=FMod51)
     data2.append(metrics.EvalPerQuestion(scores2, extra_filter=FMod51))
     scores3 = ScoresForModel(VerySimple3, vars, extra_filter=FMod51)
     data3.append(metrics.EvalPerQuestion(scores3, extra_filter=FMod51))
-    #print k, '%.2f' % (sum(v2) / len(v2)), ['%.3f' % v for v in v2]
+    # print k, '%.2f' % (sum(v2) / len(v2)), ['%.3f' % v for v in v2]
 
   cutoff = []
   value = []
   score = []
   for q in range(10):
+    s0 = [(-data0[i][q], (k, 0)) for i, k in enumerate(ks)]
+    s1 = [(-data1[i][q], (k, 30)) for i, k in enumerate(ks)]
     s2 = [(-data2[i][q], (k, 50)) for i, k in enumerate(ks)]
     s3 = [(-data3[i][q], (k, 100)) for i, k in enumerate(ks)]
-    x = sorted(s2 + s3)
+    x = sorted(s0 + s1 + s2 + s3)
     score.append(-x[0][0])
     cutoff.append(x[0][1][0])
     value.append(x[0][1][1])
 
   print cutoff
   print value
-  print score
-  """
+  print sum(score) / len(score), util.PrintList(score)
 
-  # TODO: cross validation.
+#  [20, 25, 35, 35, 65, 60, 25, 15, 15, 5]
+#  [50, 50, 50, 50, 50, 50, 50, 50, 50, 50]
+#  [0.8653399668325041, 0.9010893246187364, 0.899171270718232, 0.9138972809667674, 0.9557412565769112, 0.9543209876543209, 0.8272980501392757, 0.8201388888888889, 0.8736111111111111, 0.8772865853658537]
+
+# TODO: cross validation.
 
   #v1 = metrics.EvalPerQuestion(scores, extra_filter=FMod51)
   #print ['%.3f' % v for v in v1]

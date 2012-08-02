@@ -24,7 +24,7 @@ def FilterAndScaleScores(raw_scores, extra_filter, q):
               if G.question[i] == q and extra_filter(i)]
   if not filtered:
     print 'No scores filtered!', q
-  M = signal.MaxScore(MAX_SCORES[q])
+  M = signal.MaxScore(q)
   # We think that scores are between 0 and 100.
   return [Transform(value, M) for value in filtered]
 
