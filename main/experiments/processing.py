@@ -10,7 +10,9 @@ import os
 CORPUS_DIR = 'c:\\Dev\\Kaggle\\asap-sas\\help_data'
 
 
-def FilterOneAnswer(corpus, line):
+def RemoveSpacesFromAnswer(corpus, line):
+  # Given one answer, try to remove extra spaces.
+  # "Hello wor ld, my n ame is John!" --> "Hello world, my name is John!"
   words = line.split()
   W = len(words)
   for n in range(W - 1):
@@ -62,7 +64,10 @@ class CorpusStorage(object):
 C = CorpusStorage()
 
 
-def ProcessRawAnswer():
+def FixLastQuestion():
+  # The last question (number 10 in input, number 9 in our 0-based system) is special for 2 reasons:
+  # 1. Every answer starts with one of four options.
+  # 2. Answers have extra random whitespaces spread all over the place. We need to clean them up to get better signals.
   if G._KnownFeature('choice') and G._KnownFeature('answer'):
     return
   R = len(G.raw_answer)
@@ -82,7 +87,7 @@ def ProcessRawAnswer():
   for id, line in G.raw_answer.ItemsForQuestion(9):
     if G.question[id] == 9:
       ii = line.find('::')
-      ss = util.OnlyLetters(line[:ii].lower())
+      ss = util.OnlyAlnum(line[:ii].lower())
       choice[id] = options.index(ss) if ss in options else -1
       new_data.append(line[ii + 2:])
 
@@ -92,7 +97,7 @@ def ProcessRawAnswer():
     corpora[9] = BuildCorpus(9, new_data)
     dd = []
     for n, line in enumerate(new_data):
-      s = FilterOneAnswer(corpora[9], new_data[n])
+      s = RemoveSpacesFromAnswer(corpora[9], new_data[n])
       if s != new_data[n]:
         dd.append((new_data[n], s))
         #print new_data[n]

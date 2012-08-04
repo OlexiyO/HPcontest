@@ -61,7 +61,7 @@ class FeatureStorage(object):
   def __getattr__(self, name):
     if name in self._features:
       return self._features[name]
-    # Set default will call ParseFeature first.
+    # Do not use self._features.setdefault(name, ParseFeature(name)) -- because ParseFeature will be called.
     assert self._FileExists(name)
     print 'Parsing', name
     feat = ParseFeature(name)

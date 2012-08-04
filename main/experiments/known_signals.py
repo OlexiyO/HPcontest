@@ -27,6 +27,7 @@ def NumSentences(text):
 
 
 def GenerateTrainingFeatures():
+  # Those features do not exist in real data.
   assert Exists('score')
   assert Exists('other_score')
   G.Define('average_score', Binary(G.score, G.other_score, lambda (a, b): (a + b / 2.)))
@@ -46,12 +47,13 @@ def GenerateCrap():
 
   return signal.IntFeature(craps, 'Is really bad answer')
 
+
 def GenerateBasicFeatures():
   assert os.path.isdir(FLAGS.data_dir)
   assert Exists('ids')
   assert Exists('question')
   assert Exists('raw_answer')
-  processing.ProcessRawAnswer()
+  processing.FixLastQuestion()
   G.Define('answer_length', Unary(G.answer, len, comment='answer_length', T=IntFeature))
   G.Define('num_words', Unary(G.answer, NumWords, comment='NumWords', T=IntFeature))
   G.Define('num_sentences', Unary(G.answer, NumSentences, comment='num_sentences', T=IntFeature))

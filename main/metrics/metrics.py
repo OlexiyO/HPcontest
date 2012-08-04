@@ -33,7 +33,7 @@ def EvalPerQuestion(raw_scores, extra_filter=FTrue, only_questions=None):
   golden = G.average_score if FLAGS.use_average_score else G.score
   if only_questions is None:
     only_questions = range(10)
-  else:
+  else: 
     assert only_questions
     assert all(0 <= q < signal.NUM_QUESTIONS for q in only_questions), only_questions
   assert len(golden) == len(raw_scores), '%d != %d' % (len(golden), len(raw_scores))

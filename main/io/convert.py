@@ -1,5 +1,3 @@
-from main.base import util
-from main.experiments.processing import BuildCorpus
 from main.io.signal import MaxScore, SplitIntoN, G
 
 __author__ = 'Olexiy Oryeshko (olexiyo@gmail.com)'
@@ -16,7 +14,8 @@ FLAGS = gflags.FLAGS
 gflags.MarkFlagAsRequired('raw_data_file')
 
 
-def ParseTestData(filepath):
+def ParseTrainingData(filepath):
+  # Parses training data -- in (id, question, score1, score2, answer) format.
   ids, question, score, other_score, raw_answer = [], [], [], [], []
   with open(filepath) as fin:
     past_first = False
@@ -43,11 +42,12 @@ def ParseTestData(filepath):
 
 
 def ParseLeaderboardData(filepath):
+  # Parses test data -- in (id, question, answer) format.
   ids, question, raw_answer = [], [], []
   with open(filepath) as fin:
     past_first = False
     for line in fin:
-      # First line is crap
+      # First line in file is non-data.
       if not past_first:
         past_first = True
         continue
@@ -63,7 +63,8 @@ def ParseLeaderboardData(filepath):
 
 
 def main():
-  ParseTestData(FLAGS.raw_data_file)
+  # Run this once to generate basic signals.
+  ParseTrainingData(FLAGS.raw_data_file)
 
 
 if __name__ == '__main__':

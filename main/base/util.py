@@ -13,7 +13,7 @@ def PrintDict(D):
   return '{\n%s}\n' % ',\n'.join('"%s": %d' % v for v in vals)
 
 
-def OnlyLetters(s):
+def OnlyAlnum(s):
   return ''.join(q for q in s if q.isalnum())
 
 

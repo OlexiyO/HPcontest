@@ -2,106 +2,48 @@ from main.base import util
 from main.experiments import processing
 from main.experiments.known_signals import GenerateBasicFeatures, GenerateTrainingFeatures
 from main.experiments.misc import *
-from main.io import signal
 
 from main.metrics import metrics
 from main.model import models
 
 __author__ = 'Olexiy Oryeshko (olexiyo@gmail.com)'
 
-import os
-import re
 import sys
 
 import gflags
 FLAGS = gflags.FLAGS
 
 
-def ScoresForModel(model, vars, extra_filter=util.FTrue):
+def RawScoresForModel(model, vars, extra_filter=util.FTrue):
+  # Build raw scores for a model.
+  # Raw scores is a full vector, each value 0 to 100.
   return [model(ind, vars) if extra_filter(ind) else -111 for ind in range(len(G.ids))]
 
 
-def FilterSpaces1(corpus, text):
-  dd = set([])
-  for id, t in enumerate(text):
-    words = t.split()
-    W = len(words)
-    for n in range(W - 1):
-      w1 = util.OnlyLetters(words[n].lower())
-      w2 = util.OnlyLetters(words[n + 1].lower())
-      if w1 == 'dog' and w2 == 'house':
-        continue
-      common = w1 + w2
-      if w1 not in corpus or w2 not in corpus:
-        continue
-      if (common in corpus) and corpus[common] >= min(corpus[w1], corpus[w2]):
-        dd.add((w1, w2))
-  return dd
-
-def FilterSpaces2(corpus, text):
-  dd = set([])
-  for id, t in enumerate(text):
-    words = t.split()
-    W = len(words)
-    for n in range(W - 1):
-      w1 = util.OnlyLetters(words[n].lower())
-      w2 = util.OnlyLetters(words[n + 1].lower())
-      if w1 == 'dog' and w2 == 'house':
-        continue
-      common = w1 + w2
-      if w1 not in corpus or w2 not in corpus:
-        continue
-      if (common in corpus) and corpus[common] >= max(corpus[w1], corpus[w2]) - 1:
-        dd.add((w1, w2))
-  return dd
-
-
-def FilterSpaces3(corpus, text):
-  dd = set([])
-  for id, t in enumerate(text):
-    words = t.split()
-    W = len(words)
-    for n in range(W - 1):
-      w1 = util.OnlyLetters(words[n].lower())
-      w2 = util.OnlyLetters(words[n + 1].lower())
-      if w1 == 'dog' and w2 == 'house':
-        continue
-      while w2 and not w2[-1].isalnum():
-        w2 = w2[:-1]
-      if w1 not in corpus or w2 not in corpus:
-        continue
-      common = w1 + w2
-      if (common in corpus) and corpus[common] >= max(corpus[w1], corpus[w2]) - 10:
-        dd.add((w1, w2))
-  return dd
-
-
 def TryFixing():
-  #processing.ProcessRawAnswer()
-  GenerateBasicFeatures()
-  return
+  # Compare two algorithms for fixing typos.
   v = processing.BuildCorpus(9, G.answer.ValuesForQuestion(9))
   tt = G.answer.ValuesForQuestion(9)
   for a, b in v.iteritems():
     if len(a) == 1:
       pass
       #print a, b
-  good1 = FilterSpaces1(v, tt)
-  good2 = FilterSpaces2(v, tt)
-  good3 = FilterSpaces3(v, tt)
+  res1 = processing.RemoveSpacesFromAnswer(v, tt)
+  res2 = processing.RemoveSpacesFromAnswer(v, tt) # Replace by another algo
 
-  dd = good3 - good2
+  diff = res2 - res1
 
-  for (w1, w2) in dd:
+  for (w1, w2) in diff:
     common = w1 + w2
     print w1, w2, common, v[w1], v[w2], v[common]
   return
 
 
 def CheckModel(model, selector):
-  scores = ScoresForModel(model, {}, extra_filter=selector)
+  # Run model on selected ids. Print metrics per question.
+  scores = RawScoresForModel(model, {}, extra_filter=selector)
   v2 = metrics.EvalPerQuestion(scores, extra_filter=selector)
-  print '%.2f' % (sum(v2) / len(v2)), ['%.3f' % v for v in v2]
+  print '%.2f' % (sum(v2) / len(v2)), util.PrintList(v2)
 
 
 def main():
@@ -147,13 +89,13 @@ def main():
   ks = range(5, 100, 5)
   for k in ks:
     vars['min_word_cutoff'] = k
-    scores0 = ScoresForModel(VerySimple0, vars, extra_filter=FMod51)
+    scores0 = RawScoresForModel(VerySimple0, vars, extra_filter=FMod51)
     data0.append(metrics.EvalPerQuestion(scores0, extra_filter=FMod51))
-    scores1 = ScoresForModel(VerySimple1, vars, extra_filter=FMod51)
+    scores1 = RawScoresForModel(VerySimple1, vars, extra_filter=FMod51)
     data1.append(metrics.EvalPerQuestion(scores1, extra_filter=FMod51))
-    scores2 = ScoresForModel(VerySimple2, vars, extra_filter=FMod51)
+    scores2 = RawScoresForModel(VerySimple2, vars, extra_filter=FMod51)
     data2.append(metrics.EvalPerQuestion(scores2, extra_filter=FMod51))
-    scores3 = ScoresForModel(VerySimple3, vars, extra_filter=FMod51)
+    scores3 = RawScoresForModel(VerySimple3, vars, extra_filter=FMod51)
     data3.append(metrics.EvalPerQuestion(scores3, extra_filter=FMod51))
     # print k, '%.2f' % (sum(v2) / len(v2)), ['%.3f' % v for v in v2]
 

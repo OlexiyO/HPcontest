@@ -1,8 +1,8 @@
+import io
 import gflags
 import sys
-from numpy.ma.core import ids
-from main.experiments import misc, known_signals
-from main.io import io, convert, signal
+from main.experiments import known_signals
+from main.io import convert, signal
 from main.io.signal import *
 from main.metrics.metrics import Transform
 from main.model import models
@@ -28,7 +28,9 @@ def SaveAsScores(vals, filename):
 
 
 def main():
-  #convert.ParseLeaderboardData(FLAGS.raw_data_file)
+  # This module takes given model, applies it to leaderboard data (data without "score" feature) and generates file
+  # for submitting.
+  convert.ParseLeaderboardData(FLAGS.raw_data_file)
   known_signals.GenerateBasicFeatures()
   print len(G.ids)
   print len(G.num_words)
