@@ -1,4 +1,5 @@
 from main.metrics.kappa import histogram, confusion_matrix, quadratic_weighted_kappa
+from sklearn import ensemble
 
 __author__ = 'Olexiy Oryeshko (olexiyo@gmail.com)'
 
@@ -30,15 +31,15 @@ class KappaCase(unittest.TestCase):
   def testQWK(self):
     self.assertEqual(1, quadratic_weighted_kappa([0, 1, 2, 3], [0, 1, 2, 3]))
     self.assertEqual(-1, quadratic_weighted_kappa([3, 0, 3, 0], [0, 3, 0, 3]))
-    '''
-    self.assertEqual(-1, quadratic_weighted_kappa([2, 2, 2, 2], [1, 1, 1, 1]))
-    self.assertEqual(-1, quadratic_weighted_kappa([3, 3, 3, 3], [0, 0, 0, 0]))
-    self.assertEqual(-1, quadratic_weighted_kappa([3, 3, 3, 3], [3, 3, 3, 3]))
-    '''
-    print quadratic_weighted_kappa([3, 3, 3, 3], [0, 0, 0, 0])
-    print quadratic_weighted_kappa([2, 2, 2, 2], [1, 1, 1, 1])
-    print quadratic_weighted_kappa([2, 2, 2, 2], [3, 3, 3, 3])
-    print quadratic_weighted_kappa([3, 3, 3, 3], [3, 3, 3, 3])
+    self.assertEqual(0, quadratic_weighted_kappa([2, 2, 2, 2], [1, 1, 1, 1]))
+    self.assertEqual(0, quadratic_weighted_kappa([3, 3, 3, 3], [0, 0, 0, 0]))
+    self.assertAlmostEqual(-0.15384615, quadratic_weighted_kappa([2, 2, 2, 2, 0, 2], [2, 2, 2, 2, 2, 1]))
+    self.assertAlmostEqual(-0.2, quadratic_weighted_kappa([2, 2, 2, 2, 1, 2], [2, 2, 2, 2, 2, 1]))
+    self.assertAlmostEqual(0.76923076, quadratic_weighted_kappa([2, 2, 2, 2, 2, 0], [2, 2, 2, 2, 2, 1]))
+    self.assertAlmostEqual(0.875, quadratic_weighted_kappa([0, 0, 1, 1, 2, 2, 3, 3], [0, 0, 1, 1, 2, 2, 2, 2]))
+    self.assertAlmostEqual(0.916666666, quadratic_weighted_kappa([0, 0, 1, 1, 2, 2, 3, 3], [0, 0, 1, 1, 3, 3, 3, 3]))
+
+    # self.assertEqual(0, quadratic_weighted_kappa([3, 3, 3, 3], [3, 3, 3, 3])) # DivByZero
 
 
 if __name__ == '__main__':

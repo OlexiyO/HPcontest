@@ -17,3 +17,11 @@ def OnlyAlnum(s):
   return ''.join(q for q in s if q.isalnum())
 
 
+def FMod(k):
+  return lambda id: id % 5 == k
+
+def NotFMod(k):
+  return lambda id: id % 5 != k
+
+def FMods(mods):
+  return lambda id: (id % 5) in mods

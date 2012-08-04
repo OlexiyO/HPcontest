@@ -1,9 +1,11 @@
+from main.algo import grad_boost
+from main.algo.grad_boost import ScoreForPredictor, AveragePredictor
 from main.base import util
 from main.experiments import processing
 from main.experiments.known_signals import GenerateBasicFeatures, GenerateTrainingFeatures
 from main.experiments.misc import *
 
-from main.metrics import metrics
+from main.metrics import metrics, kappa
 from main.model import models
 
 __author__ = 'Olexiy Oryeshko (olexiyo@gmail.com)'
@@ -46,13 +48,32 @@ def CheckModel(model, selector):
   print '%.2f' % (sum(v2) / len(v2)), util.PrintList(v2)
 
 
+def PredictForSignals(sig):
+  preds = [grad_boost.DoPrediction(sig, 9, extra_filter=util.FMod(m)) for m in range(4)]
+  av_p = AveragePredictor(preds)
+  #print preds[0]
+  v1 = [ScoreForPredictor(av_p, sig, 9, extra_filter=util.FMod(k)) for k in range(5)]
+  print util.PrintList(v1)
+
+
 def main():
+  '''
+  sig1 = [G.num_words, G.is_crap]
+  PredictForSignals(sig1)
+  sig2 = [G.num_words, G.is_crap, G.choice]
+  PredictForSignals(sig2)
+  sig3 = [G.num_words, G.is_crap, G.choice, G.num_sentences]
+  PredictForSignals(sig3)
+  '''
+  sig4 = [G.num_words, G.is_crap, G.choice, G.word_length, G.answer_length]
+  PredictForSignals(sig4)
 
-  # TODO: show difference between models!
-
-  GenerateTrainingFeatures()
+  return
+# TODO: show difference between models!
   GenerateBasicFeatures()
+  GenerateTrainingFeatures()
 
+  return
   # TODO: try to integrate some other signal into "all zeroes" model
   # TODO: Find most popular words for each question, try to use
   # TODO: use different target function
@@ -66,20 +87,15 @@ def main():
   vars = {'min_word_cutoff': 3.,
           'ans_len': .5,
           'num_sent': 10., }
-  FMod5 = lambda ind: (ind % 5) != 0
-  FMod51 = lambda ind: (ind % 5) == 1
-  FValidation = lambda ind: not FMod5(ind)
   # TODO: compute scores for pub leaderboard.
   #scores = ScoresForModel(VerySimple2, vars)
 
   print 'Current'
   for k in range(5):
-    FFM = lambda ind: (ind % 5) == k
-    CheckModel(models.Version0, FFM)
+    CheckModel(models.Version0, util.FMod(k))
 
   for k in range(5):
-    FFM = lambda ind: (ind % 5) == k
-    CheckModel(models.Version1, FFM)
+    CheckModel(models.Version1, util.FMod(k))
 
   return
   data0 = []
@@ -89,14 +105,14 @@ def main():
   ks = range(5, 100, 5)
   for k in ks:
     vars['min_word_cutoff'] = k
-    scores0 = RawScoresForModel(VerySimple0, vars, extra_filter=FMod51)
-    data0.append(metrics.EvalPerQuestion(scores0, extra_filter=FMod51))
-    scores1 = RawScoresForModel(VerySimple1, vars, extra_filter=FMod51)
-    data1.append(metrics.EvalPerQuestion(scores1, extra_filter=FMod51))
-    scores2 = RawScoresForModel(VerySimple2, vars, extra_filter=FMod51)
-    data2.append(metrics.EvalPerQuestion(scores2, extra_filter=FMod51))
-    scores3 = RawScoresForModel(VerySimple3, vars, extra_filter=FMod51)
-    data3.append(metrics.EvalPerQuestion(scores3, extra_filter=FMod51))
+    scores0 = RawScoresForModel(VerySimple0, vars, extra_filter=util.FMod(1))
+    data0.append(metrics.EvalPerQuestion(scores0, extra_filter=util.FMod(1)))
+    scores1 = RawScoresForModel(VerySimple1, vars, extra_filter=util.FMod(1))
+    data1.append(metrics.EvalPerQuestion(scores1, extra_filter=util.FMod(1)))
+    scores2 = RawScoresForModel(VerySimple2, vars, extra_filter=util.FMod(1))
+    data2.append(metrics.EvalPerQuestion(scores2, extra_filter=util.FMod(1)))
+    scores3 = RawScoresForModel(VerySimple3, vars, extra_filter=util.FMod(1))
+    data3.append(metrics.EvalPerQuestion(scores3, extra_filter=util.FMod(1)))
     # print k, '%.2f' % (sum(v2) / len(v2)), ['%.3f' % v for v in v2]
 
   cutoff = []
@@ -114,11 +130,7 @@ def main():
 
   print cutoff
   print value
-  print sum(score) / len(score), util.PrintList(score)
-
-#  [20, 25, 35, 35, 65, 60, 25, 15, 15, 5]
-#  [50, 50, 50, 50, 50, 50, 50, 50, 50, 50]
-#  [0.8653399668325041, 0.9010893246187364, 0.899171270718232, 0.9138972809667674, 0.9557412565769112, 0.9543209876543209, 0.8272980501392757, 0.8201388888888889, 0.8736111111111111, 0.8772865853658537]
+  print kappa.mean_quadratic_weighted_kappa(score), util.PrintList(score)
 
 # TODO: cross validation.
 
@@ -126,14 +138,6 @@ def main():
   #print ['%.3f' % v for v in v1]
   #v2 = metrics.EvalPerQuestion(scores, extra_filter=FValidation)
   #print ['%.3f' % v for v in v2]
-
-  '''
-  print 'scores', Eval(score), EvalOnValidation(score)
-  print 'second scores', Eval(other_score), EvalOnValidation(other_score)
-  print 'aver', Eval(average_score), EvalOnValidation(average_score)
-  vals = IntFeature([id % 4 for id in ids], '')
-  print 'vals', Eval(vals), EvalOnValidation(vals)
-  '''
 
 
 if __name__ == '__main__':

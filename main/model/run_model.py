@@ -2,6 +2,7 @@ import io
 import gflags
 import sys
 from main.experiments import known_signals
+from main.experiments.known_signals import Exists
 from main.io import convert, signal
 from main.io.signal import *
 from main.metrics.metrics import Transform
@@ -15,7 +16,7 @@ gflags.DEFINE_string('model_scores_file', 'model_scores', 'File to save output.'
 
 
 def ToFinalScore(id, score):
-  return Transform(score, signal.MaxScore(G.question[id]))
+  return Transform(score, Q.max_score[G.question[id]])
 
 
 def SaveAsScores(vals, filename):
@@ -30,6 +31,7 @@ def SaveAsScores(vals, filename):
 def main():
   # This module takes given model, applies it to leaderboard data (data without "score" feature) and generates file
   # for submitting.
+  assert Exists('score_distribution')
   convert.ParseLeaderboardData(FLAGS.raw_data_file)
   known_signals.GenerateBasicFeatures()
   print len(G.ids)

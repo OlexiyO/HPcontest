@@ -1,3 +1,5 @@
+from main.base import util
+
 __author__ = 'Olexiy Oryeshko (olexiyo@gmail.com)'
 
 import gflags
@@ -21,15 +23,14 @@ def SplitIntoN(line, cnt):
 def ParseFeature(filename):
   filepath = os.path.join(FLAGS.data_dir, filename)
   assert os.path.exists(filepath), filepath
-  FS = {'STRING': str, 'INT': int, 'FLOAT': float}
-  CLASSES = {'STRING': StringFeature, 'INT': IntFeature, 'FLOAT': FloatFeature}
+  CLASSES = {'STRING': StringFeature, 'INT': IntFeature, 'FLOAT': FloatFeature, 'COMPLEX': ComplexFeature}
   with open(filepath) as fin:
     line_raw = fin.readline()
     assert line_raw[0] == '#', line_raw
     T = line_raw.strip()[2:]
-    F = FS[T]
-    vals = (F(SplitIntoN(line, 2)[1]) for line in fin if line[0] != '#')
-    res = CLASSES[T](vals, 'Parsed from %s' % filepath)
+    CLAZZ = CLASSES[T]
+    vals = (CLAZZ.ParseValue(SplitIntoN(line, 2)[1]) for line in fin if line[0] != '#')
+    res = CLAZZ(vals, 'Parsed from %s' % filepath)
 
   res.name = filename
   return res
@@ -79,14 +80,15 @@ class FeatureStorage(object):
 
 
 class _Feature(list):
-  def __init__(self, values, comment):
+  def __init__(self, values, comment=''):
     super(_Feature, self).__init__(values)
     self._comment = comment
 
   def GetType(self):
     raise NotImplementedError
 
-  def PrintValue(self, value):
+  @classmethod
+  def ParseValue(cls, _value):
     raise NotImplementedError
 
   def SaveToFile(self, filename, separator='\t', with_comment=True):
@@ -96,37 +98,50 @@ class _Feature(list):
       if with_comment:
         fout.write('# %s\n' % self.GetType())
         fout.write('# %s\n' % self._comment)
-      fout.writelines('%d%s%s\n' % (t[0], separator, self.PrintValue(t[1])) for t in enumerate(self))
+      fout.writelines('%d%s%s\n' % (t[0], separator, t[1]) for t in enumerate(self))
 
-  def ValuesForQuestion(self, q):
-    return [value for id, value in enumerate(self) if G.question[id] == q]
+  def ValuesForQuestion(self, q, extra_filter=util.FTrue):
+    return [value for id, value in enumerate(self) if (G.question[id] == q) and extra_filter(id)]
 
-  def ItemsForQuestion(self, q):
-    return [(id, value) for id, value in enumerate(self) if G.question[id] == q]
+  def ItemsForQuestion(self, q, extra_filter=util.FTrue):
+    return [(id, value) for id, value in enumerate(self) if (G.question[id] == q) and extra_filter(id)]
 
 
 class IntFeature(_Feature):
-  def PrintValue(self, value):
-    return '%d' % value
-
   def GetType(self):
     return 'INT'
 
+  @classmethod
+  def ParseValue(cls, value):
+    return int(value)
+
 
 class StringFeature(_Feature):
-  def PrintValue(self, value):
-    return value
-
   def GetType(self):
     return 'STRING'
 
+  @classmethod
+  def ParseValue(cls, value):
+    return value
+
 
 class FloatFeature(_Feature):
-  def PrintValue(self, value):
-    return '%f' % value
-
   def GetType(self):
       return 'FLOAT'
+
+  @classmethod
+  def ParseValue(cls, value):
+    return float(value)
+
+
+class ComplexFeature(_Feature):
+  def GetType(self):
+    return 'COMPLEX'
+
+  @classmethod
+  def ParseValue(cls, value):
+    return eval(value)
+
 
 
 def Binary(fA, fB, Func, comment='', T=FloatFeature):
@@ -136,17 +151,10 @@ def Binary(fA, fB, Func, comment='', T=FloatFeature):
 def Unary(fA, Func, comment, T=FloatFeature):
   return T(map(Func, fA), comment)
 
-
+# Storage for answer-level features.
 G = FeatureStorage()
-
+# Storage for question-level features.
+Q = FeatureStorage()
 
 UNKNOWN = -111
 NUM_QUESTIONS = 10
-MAX_SCORES = [3, 3, 2, 2, 3, 3, 2, 2, 2, 2]
-assert len(MAX_SCORES) == NUM_QUESTIONS
-
-def MaxScore(question):
-  assert 0 <= question < NUM_QUESTIONS
-  return MAX_SCORES[question]
-
-

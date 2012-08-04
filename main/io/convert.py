@@ -1,4 +1,4 @@
-from main.io.signal import MaxScore, SplitIntoN, G
+from main.io.signal import SplitIntoN, G, Q
 
 __author__ = 'Olexiy Oryeshko (olexiyo@gmail.com)'
 
@@ -31,8 +31,8 @@ def ParseTrainingData(filepath):
       score.append(cols[2])
       other_score.append(cols[3])
       raw_answer.append(cols[4])
-      assert 0 <= int(cols[2]) <= MaxScore(q), line
-      assert 0 <= int(cols[3]) <= MaxScore(q), line
+      assert 0 <= int(cols[2]) <= Q.MaxScore[q], line
+      assert 0 <= int(cols[3]) <= Q.MaxScore[q], line
 
   signal.IntFeature(map(int, ids), 'Original: id').SaveToFile('ids')
   signal.IntFeature(map(int, question), 'Original: question').SaveToFile('question')
