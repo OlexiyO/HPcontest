@@ -1,7 +1,7 @@
 from main.algo import grad_boost
-from main.algo.grad_boost import ScoreForPredictor, AveragePredictor
+from main.algo.grad_boost import KappaForPredictor, AveragePredictor
 from main.base import util
-from main.experiments import processing
+from main.experiments import processing, ml_params
 from main.experiments.known_signals import GenerateBasicFeatures, GenerateTrainingFeatures
 from main.experiments.misc import *
 
@@ -48,25 +48,44 @@ def CheckModel(model, selector):
   print '%.2f' % (sum(v2) / len(v2)), util.PrintList(v2)
 
 
-def PredictForSignals(sig):
-  preds = [grad_boost.DoPrediction(sig, 9, extra_filter=util.FMod(m)) for m in range(4)]
-  av_p = AveragePredictor(preds)
-  #print preds[0]
-  v1 = [ScoreForPredictor(av_p, sig, 9, extra_filter=util.FMod(k)) for k in range(5)]
-  print util.PrintList(v1)
+def PredictForSignals(q, list_of_signals, mods_for_training=4, boost_params={}):
+  if boost_params is None:
+    boost_params = {}
+  preds = [grad_boost.Approximate(list_of_signals, q, extra_filter=util.FMod(k), boost_params=boost_params)
+           for k in range(mods_for_training)]
+  av_p = AveragePredictor(preds, [util.FMod(k) for k in range(mods_for_training)])
+  return KappaForPredictor(av_p, list_of_signals, [q], extra_filter=util.FMod(4))
+  v1 = [KappaForPredictor(av_p, list_of_signals, [q], extra_filter=util.FMod(k)) for k in range(5)]
+  value = KappaForPredictor(av_p, list_of_signals, [q])
+  print q, '%.2f' % value, util.PrintList(v1)
+  return value
 
 
 def main():
-  '''
-  sig1 = [G.num_words, G.is_crap]
-  PredictForSignals(sig1)
-  sig2 = [G.num_words, G.is_crap, G.choice]
-  PredictForSignals(sig2)
-  sig3 = [G.num_words, G.is_crap, G.choice, G.num_sentences]
-  PredictForSignals(sig3)
-  '''
-  sig4 = [G.num_words, G.is_crap, G.choice, G.word_length, G.answer_length]
-  PredictForSignals(sig4)
+  # Todo:
+  # 1. Automatically pick best model for every question.
+  # 4. Try new signals.
+  # 2. Try kappa as loss function.
+  # 3. Try better loss function.
+  N_EST = 150
+  boost_params = dict(min_samples_leaf=5, min_samples_split=5, max_depth=1, n_estimators=N_EST, learn_rate=.3)
+  list_of_signals = [G.num_words, G.is_crap, G.word_length, G.answer_length, G.num_sentences, G.choice]
+  ml_params.PlotNumberOfEstimators(9, list_of_signals, mods_for_training=range(4), boost_params=boost_params, steps=N_EST)
+  return
+  vs = []
+  for q in range(10):
+    if q == 9:
+      list_of_signals.append(G.choice)
+    dd = []
+    for msl in [3, 4, 5]:
+      for n_estimators in range(30, 50, 5):
+        for max_depth in range(1, 6):
+          varz = dict(min_samples_leaf=msl, min_samples_split=msl, n_estimators=n_estimators, max_depth=max_depth)
+          v = PredictForSignals(q, list_of_signals, boost_params=varz)
+          dd.append((-v, varz))
+
+  # vs.append()
+  #print kappa.mean_quadratic_weighted_kappa(vs)
 
   return
 # TODO: show difference between models!

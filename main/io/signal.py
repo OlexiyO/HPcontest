@@ -14,6 +14,7 @@ gflags.DEFINE_integer('validation_denom', 5, '.')
 
 
 def SplitIntoN(line, cnt):
+  # Parses line by splitting into exactly N parts.
   tmp = line.strip().split()
   while len(tmp) < cnt:
     tmp += ' '
@@ -21,6 +22,7 @@ def SplitIntoN(line, cnt):
 
 
 def ParseFeature(filename):
+  # Parses file with feature data.
   filepath = os.path.join(FLAGS.data_dir, filename)
   assert os.path.exists(filepath), filepath
   CLASSES = {'STRING': StringFeature, 'INT': IntFeature, 'FLOAT': FloatFeature, 'COMPLEX': ComplexFeature}
@@ -158,3 +160,12 @@ Q = FeatureStorage()
 
 UNKNOWN = -111
 NUM_QUESTIONS = 10
+
+
+def IdsForQuestion(q, extra_filter=util.FTrue):
+  return (id for id, _ in G.question.ItemsForQuestion(q, extra_filter=extra_filter))
+
+
+def ListOfSignals(list_of_signals, q, extra_filter=util.FTrue):
+  F = lambda id: [S[id] for S in list_of_signals]
+  return [F(id) for id in IdsForQuestion(q, extra_filter=extra_filter)]

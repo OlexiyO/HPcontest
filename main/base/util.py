@@ -25,3 +25,7 @@ def NotFMod(k):
 
 def FMods(mods):
   return lambda id: (id % 5) in mods
+
+
+def IntRound(x):
+  return [int(round(e)) for e in x]
