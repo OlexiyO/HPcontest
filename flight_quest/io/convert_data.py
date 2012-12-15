@@ -109,14 +109,13 @@ def ProcessASDI(in_dir, out_dir, t0):
   ProcessASDIPositionFile(in_path, out_path, t0)
 
 
-def EndToEnd(base_dir, out_dir, t0):
+def ProcessFlightHistory(base_dir, out_dir, t0):
   """Transforms input files to better format.
 
   Requires us to 'cd' into parent directory for that date before working.
 
   Args:
-    initial_date: string. Date for which we transform data, in 'YYYY-MM-dd' format.
-        Midnight UTC for that date is considered time 0. Example: '2012-11-13'
+    t0: Midnight UTC for the day we are working with.
   """
   history_outfile = os.path.join(out_dir, 'flighthistory.csv')
   events_outfile = os.path.join(out_dir, 'flighthistoryevents.csv')
@@ -135,8 +134,9 @@ def RunMe(date_str):
   out_dir = os.path.join(base_dir, 'good')
   if not os.path.exists(out_dir):
     os.mkdir(out_dir)
-  EndToEnd(base_dir, out_dir, t0)
+  ProcessFlightHistory(base_dir, out_dir, t0)
   ProcessASDI(asdi_dir, out_dir, t0)
+  MergeMETARFiles(date_str)
   print 'Done everything for ', date_str
 
 

@@ -126,3 +126,4 @@ def MergeMETARFiles(date_str):
   main_df = main_df.merge(runway_df)
   main_df = main_df.merge(sky_df, on=ID_FIELD)
   main_df.to_csv(os.path.join(output_dir, 'metar_weather.csv'), index=False)
+  print 'Convert METAR files for %s' % date_str
