@@ -2,6 +2,8 @@ import os
 import shutil
 import dateutil
 import pandas as pd
+from flight_quest.io.parse_METAR import   MergeMETARFiles
+from flight_quest.util import DateStrToMinutes
 
 
 OUT_DIR = 'good'
@@ -10,7 +12,7 @@ OUT_DIR = 'good'
 def TransformWeatherStations():
   # Assuming we are in the root directory with all archives unpacked in subdirs.
   f = pd.read_csv('Reference/weather_stations.csv', delimiter=';')
-  f.to_csv('Reference/weather_stations.csv', sep=',')
+  f.to_csv('Reference/weather_stations.csv', sep=',', index=False)
 
 MISSING = 'MISSING'
 
@@ -35,19 +37,10 @@ def PrettifyFlightHistory(in_filepath, out_filepath, t0):
   _PrettifyTimesInFile(in_filepath, out_filepath, t0, col_names)
 
 
-def ProcessTime(s, t0):
-  if not s:
-    return s
-  try:
-    return (dateutil.parser.parse(s) - t0).total_seconds() / 60.
-  except ValueError:
-    return ''
-
-
 def _PrettifyTimesInFile(in_filepath, out_filepath, t0, col_names):
   df = pd.read_csv(in_filepath)
   for name in col_names:
-    df[name] = df[name].map(lambda x : ProcessTime(x, t0))
+    df[name] = df[name].map(lambda x : DateStrToMinutes(x, t0))
   df.to_csv(out_filepath, index=False)
 
 
@@ -62,8 +55,9 @@ def GenerateHelperFeaturesFromHistory(in_filepath, out_filepath):
   df['scheduled_taxi_arrival'] = df.scheduled_gate_arrival - df.scheduled_runway_arrival
 
   df['flight_delta'] = df['actual_flight_time'] - df['scheduled_flight_time']
+  df['taxi_arrival_delta'] = df.actual_taxi_arrival - df.scheduled_taxi_arrival
 
-  col_names = ['flight_history_id',
+  col_names = ['flight_history_id', 'flight_delta', 'taxi_arrival_delta',
                'actual_flight_time', 'actual_taxi_departure', 'actual_taxi_arrival',
                'scheduled_flight_time', 'scheduled_taxi_departure', 'scheduled_taxi_arrival',]
   df.to_csv(out_filepath, index=False, cols=col_names)
@@ -90,7 +84,7 @@ def ProcessASDIPositionFile(in_path, out_path, t0):
   # Field no 4 and no 5 are coordinates -- need to shorten them.
   def ShortenLine(line):
     x = line.split(',')
-    x[0] = '%.2f' % ProcessTime(x[0], t0)
+    x[0] = '%.2f' % DateStrToMinutes(x[0], t0)
     x[4] = ShortenFloat(x[4])
     x[5] = ShortenFloat(x[5])
     return ','.join(x)
@@ -134,8 +128,7 @@ def EndToEnd(base_dir, out_dir, t0):
   GenerateHelperFeaturesFromHistory(history_outfile, features_outfile)
 
 
-def main():
-  date_str = '2012-11-13'
+def RunMe(date_str):
   t0 = dateutil.parser.parse(date_str).replace(tzinfo=dateutil.tz.tzutc())
   base_dir = 'C:\\Dev\\Kaggle\\FlightQuest\\InitialTrainingSet\\%s' % date_str.replace('-', '_')
   asdi_dir =  os.path.join(base_dir, 'ASDI')
@@ -144,6 +137,26 @@ def main():
     os.mkdir(out_dir)
   EndToEnd(base_dir, out_dir, t0)
   ProcessASDI(asdi_dir, out_dir, t0)
+  print 'Done everything for ', date_str
 
 
-main()  # Uncomment this line.
+def CheckFieldUnique(filepath, other_path, field_name):
+  df = pd.read_csv(filepath)
+  other_df = pd.read_csv(other_path)
+  dd = df[field_name].to_dict()
+  x = sorted((v, k) for k, v in dd.iteritems())
+  for i, y in enumerate(x):
+    if i > 0 and x[i - 1][0] == y[0]:
+      #print filepath, y
+      #lst = other_df.weather_station_code[(other_df.metar_reports_id == y)].tolist()
+      #assert len(lst) == 1
+      #yield lst[0]
+      print df.values[x[i - 1][1]]
+      print df.values[y[1]]
+      print ''
+
+
+for x in range(12, 26):
+  date_str = '2012-11-%s' % x
+  MergeMETARFiles(date_str)
+  print 'Merged for', date_str
