@@ -20,12 +20,14 @@ def RMSE2(ser1, ser2):
   return math.sqrt(np.mean(np.power(ser1 - ser2, 2)))
 
 
-def Plot(x, ys):
+def Plot(x, ys, style='.', line=None):
   colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
   Y = [ys] if isinstance(ys, pd.Series) else ys
-  plt.figure()
+  plt.cla()
   for y, color in zip(Y, colors):
-    plt.plot(x, y, '%s+' % color)
+    plt.plot(x, y, '%s%s' % (color, style))
+  if line is not None:
+    plt.plot(x, Y[0].map(lambda x: line), 'k-')
   plt.show()
 
 
@@ -37,6 +39,7 @@ def DateStrToMinutes(s, t0):
   if not s:
     return s
   try:
-    return (dateutil.parser.parse(s.replace('_', '-')) - t0).total_seconds() / 60.
+    t1 = dateutil.parser.parse(s.replace('_', '-'))
+    return (t1 - t0).total_seconds() / 60.
   except ValueError:
     return ''
