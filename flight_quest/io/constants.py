@@ -1,5 +1,3 @@
-PARENT_DATA_DIR = 'C:/Dev/Kaggle/FlightQuest/InitialTrainingSet/'
-
 FLIGHT_HISTORY_COLS = [
     'flight_history_id',
     'airline_code',

@@ -44,7 +44,7 @@ CLOUD_TYPES = [
 def GetCloudsType(desc):
   for ind, ct in CLOUD_TYPES:
     if desc.startswith(ct):
-      return 2 * ind
+      return (2 * ind)
   print 'Unknown cloud type', desc
   assert False
 

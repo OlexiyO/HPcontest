@@ -1,10 +1,13 @@
 import os
 import shutil
-import datetime
 import dateutil
 import pandas as pd
 from flight_quest.io.parse_METAR import MergeMETARFiles
 from flight_quest.util import DateStrToMinutes
+from flight_quest.util import DirForDate
+
+
+OUT_DIR = 'good'
 
 
 def TransformWeatherStations():
@@ -83,7 +86,10 @@ def PrettifyFlightHistory(in_filepath, events_in_filepath, out_filepath, t0):
       'actual_runway_departure',
       'scheduled_runway_arrival',
       'actual_runway_arrival',]
+  _PrettifyTimesInFile(in_filepath, out_filepath, t0, col_names)
 
+
+def _PrettifyTimesInFile(in_filepath, out_filepath, t0, col_names):
   df = pd.read_csv(in_filepath)
   for name in col_names:
     df[name] = df[name].map(lambda x : DateStrToMinutes(x, t0))
@@ -168,6 +174,7 @@ def ProcessFlightHistory(base_dir, out_dir, t0):
     t0: Midnight UTC for the day we are working with.
   """
   history_outfile = os.path.join(out_dir, 'flighthistory.csv')
+  events_outfile = os.path.join(out_dir, 'flighthistoryevents.csv')
   features_outfile = os.path.join(out_dir, 'history_features.csv')
   history_infile = os.path.join(base_dir, 'FlightHistory', 'flighthistory.csv')
   events_infile = os.path.join(base_dir, 'FlightHistory', 'flighthistoryevents.csv')
@@ -203,11 +210,11 @@ def CheckFieldUnique(filepath, other_path, field_name):
       #yield lst[0]
       print df.values[x[i - 1][1]]
       print df.values[y[1]]
+      print ''
 
 
-#constants.PARENT_DATA_DIR = PARENT_DATA_DIR = 'C:/Dev/Kaggle/FlightQuest/PublicLeaderboardSet/'
-
-#for x in range(26, 31):
-#  date_str = '2012-11-%s' % x
-#  RunMe()
-#  print 'Merged for', date_str
+for x in range(12, 26):
+  date_str = '2012-11-%s' % x
+  #MergeMETARFiles(date_str)
+  RunMe(date_str)
+  print 'Merged for', date_str
