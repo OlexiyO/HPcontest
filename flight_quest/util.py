@@ -4,7 +4,7 @@ import dateutil
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from flight_quest.io.constants import PARENT_DATA_DIR
+from flight_quest.io.local_constants import PARENT_DATA_DIR
 
 def DateToMinutes(date, initial_date):
   return date - initial_date if isinstance(date, pd.lib.Timestamp) else -1000
