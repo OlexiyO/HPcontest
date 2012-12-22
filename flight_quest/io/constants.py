@@ -1,4 +1,4 @@
-PARENT_DATA_DIR = 'C:/Dev/Kaggle/FlightQuest/InitialTrainingSet/'
+PARENT_DATA_DIR = '/Users/pavlosh/Projects/kaggle/hpcontest/InitialTrainingSet/'
 
 FLIGHT_HISTORY_COLS = [
     'flight_history_id',

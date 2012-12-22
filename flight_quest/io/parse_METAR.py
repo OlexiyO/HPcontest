@@ -115,6 +115,8 @@ def MergeMETARFiles(date_str):
   t0 = dateutil.parser.parse(date_str).replace(tzinfo=dateutil.tz.tzutc())
   input_dir = os.path.join(dir, 'metar')
   output_dir = os.path.join(dir, 'good')
+  if not os.path.isdir(output_dir):
+    os.mkdir(output_dir)
   sky_filepath = os.path.join(input_dir, 'flightstats_metarskyconditions_combined.csv')
   runway_filepath = os.path.join(input_dir, 'flightstats_metarrunwaygroups_combined.csv')
   main_filepath = os.path.join(input_dir, 'flightstats_metarreports_combined.csv')

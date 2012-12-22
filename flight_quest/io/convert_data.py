@@ -2,8 +2,9 @@ import os
 import shutil
 import dateutil
 import pandas as pd
-from flight_quest.io.parse_METAR import   MergeMETARFiles
+from flight_quest.io.parse_METAR import MergeMETARFiles
 from flight_quest.util import DateStrToMinutes
+from flight_quest.util import DirForDate
 
 
 OUT_DIR = 'good'
@@ -129,8 +130,8 @@ def ProcessFlightHistory(base_dir, out_dir, t0):
 
 def RunMe(date_str):
   t0 = dateutil.parser.parse(date_str).replace(tzinfo=dateutil.tz.tzutc())
-  base_dir = 'C:\\Dev\\Kaggle\\FlightQuest\\InitialTrainingSet\\%s' % date_str.replace('-', '_')
-  asdi_dir =  os.path.join(base_dir, 'ASDI')
+  base_dir = DirForDate(date_str)
+  asdi_dir = os.path.join(base_dir, 'ASDI')
   out_dir = os.path.join(base_dir, 'good')
   if not os.path.exists(out_dir):
     os.mkdir(out_dir)
@@ -158,5 +159,6 @@ def CheckFieldUnique(filepath, other_path, field_name):
 
 for x in range(12, 26):
   date_str = '2012-11-%s' % x
-  MergeMETARFiles(date_str)
+  #MergeMETARFiles(date_str)
+  RunMe(date_str)
   print 'Merged for', date_str
