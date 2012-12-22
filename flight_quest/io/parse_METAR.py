@@ -44,7 +44,7 @@ CLOUD_TYPES = [
 def GetCloudsType(desc):
   for ind, ct in CLOUD_TYPES:
     if desc.startswith(ct):
-      return (2 * ind)
+      return 2 * ind
   print 'Unknown cloud type', desc
   assert False
 
@@ -110,11 +110,8 @@ def ProcessRunway(ID_FIELD, runway_filepath):
   return runway_df.drop_duplicates(cols=[ID_FIELD])[[ID_FIELD, 'min_visible', 'max_visible']]
 
 
-def MergeMETARFiles(date_str):
-  dir = DirForDate(date_str)
-  t0 = dateutil.parser.parse(date_str).replace(tzinfo=dateutil.tz.tzutc())
-  input_dir = os.path.join(dir, 'metar')
-  output_dir = os.path.join(dir, 'good')
+def MergeMETARFiles(base_dir, output_dir, t0):
+  input_dir = os.path.join(base_dir, 'metar')
   sky_filepath = os.path.join(input_dir, 'flightstats_metarskyconditions_combined.csv')
   runway_filepath = os.path.join(input_dir, 'flightstats_metarrunwaygroups_combined.csv')
   main_filepath = os.path.join(input_dir, 'flightstats_metarreports_combined.csv')
@@ -126,4 +123,4 @@ def MergeMETARFiles(date_str):
   main_df = main_df.merge(runway_df)
   main_df = main_df.merge(sky_df, on=ID_FIELD)
   main_df.to_csv(os.path.join(output_dir, 'metar_weather.csv'), index=False)
-  print 'Convert METAR files for %s' % date_str
+  print 'Converted METAR files for %s' % base_dir

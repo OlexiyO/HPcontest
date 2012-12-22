@@ -1,12 +1,10 @@
 import os
 import shutil
+import datetime
 import dateutil
 import pandas as pd
-from flight_quest.io.parse_METAR import   MergeMETARFiles
+from flight_quest.io.parse_METAR import MergeMETARFiles
 from flight_quest.util import DateStrToMinutes
-
-
-OUT_DIR = 'good'
 
 
 def TransformWeatherStations():
@@ -17,12 +15,63 @@ def TransformWeatherStations():
 MISSING = 'MISSING'
 
 
-def PrettifyFlightEvents(in_filepath, out_filepath, t0):
-  col_names = ['date_time_recorded']
-  _PrettifyTimesInFile(in_filepath, out_filepath, t0, col_names)
+def ParseNewEstimationTime(desc, field_name, t0_notimezone):
+  datetime_len = len('12/04/12 14:44')
+  old_prefix = ' Old='
+  new_prefix = ' New='
+  prefix_len = len(new_prefix)
+  n1 = desc.index(field_name)
+
+  def IsDateValid(s):
+    if len(s) != 14:
+      return False
+    for i, c in enumerate(s):
+      if i not in [2, 5, 8, 11] and not c.isdigit():
+        return False
+    return s[2] == '/' and s[5] == '/' and s[8] == ' ' and s[11] == ':'
+
+  def ParseDateTime(s, t0_notimezone):
+    # s = "11/15/12 18:36"
+    if not IsDateValid(s):
+      return -1000
+    month = int(s[:2])
+    day = int(s[:2])
+    month = int(s[3:5])
+    year = 2000 + int(s[6:8])
+    hour = int(s[9:11])
+    minute = int(s[12:])
+    t1 = datetime.datetime(year, month, day, hour=hour, minute=minute)
+    return (t1 - t0_notimezone).total_seconds() / 60.
+
+  if n1 != -1:
+    n1 += 4
+    if desc[n1:].startswith(old_prefix):
+      n1 += (prefix_len + datetime_len)
+    if desc[n1:].startswith(new_prefix):
+      try:
+        return ParseDateTime(desc[n1 + prefix_len:n1 + prefix_len + datetime_len].strip(), t0_notimezone)
+      except Exception as e:
+        return -1000
+  return -1000
 
 
-def PrettifyFlightHistory(in_filepath, out_filepath, t0):
+def ExtractEstimatedArrivalTimes(events_in_filepath, t0):
+  t0_notimezone = t0.replace(tzinfo=None)
+  df_events = pd.read_csv(events_in_filepath)
+  runway_arrival_dict = {}
+  gate_arrival_dict = {}
+  for id, desc in zip(df_events.flight_history_id, df_events.data_updated):
+    t1 = ParseNewEstimationTime(desc, 'EGA', t0_notimezone)
+    if t1 > -100:
+      gate_arrival_dict[id] = t1
+    t1 = ParseNewEstimationTime(desc, 'ERA', t0_notimezone)
+    if t1 > -100:
+      runway_arrival_dict[id] = t1
+
+  return gate_arrival_dict, runway_arrival_dict
+
+
+def PrettifyFlightHistory(in_filepath, events_in_filepath, out_filepath, t0):
   col_names = [
       'published_departure',
       'published_arrival',
@@ -34,13 +83,14 @@ def PrettifyFlightHistory(in_filepath, out_filepath, t0):
       'actual_runway_departure',
       'scheduled_runway_arrival',
       'actual_runway_arrival',]
-  _PrettifyTimesInFile(in_filepath, out_filepath, t0, col_names)
 
-
-def _PrettifyTimesInFile(in_filepath, out_filepath, t0, col_names):
   df = pd.read_csv(in_filepath)
   for name in col_names:
     df[name] = df[name].map(lambda x : DateStrToMinutes(x, t0))
+
+  gate_arrival_dict, runway_arrival_dict = ExtractEstimatedArrivalTimes(events_in_filepath, t0)# (-60 * df.arrival_airport_timezone_offset) is for time offset.
+  df['estimated_gate_arrival'] = df.flight_history_id.map(gate_arrival_dict) - (60 * df.arrival_airport_timezone_offset)
+  df['updated_runway_arrival'] = df.flight_history_id.map(runway_arrival_dict)  - (60 * df.arrival_airport_timezone_offset)
   df.to_csv(out_filepath, index=False)
 
 
@@ -118,25 +168,25 @@ def ProcessFlightHistory(base_dir, out_dir, t0):
     t0: Midnight UTC for the day we are working with.
   """
   history_outfile = os.path.join(out_dir, 'flighthistory.csv')
-  events_outfile = os.path.join(out_dir, 'flighthistoryevents.csv')
   features_outfile = os.path.join(out_dir, 'history_features.csv')
   history_infile = os.path.join(base_dir, 'FlightHistory', 'flighthistory.csv')
   events_infile = os.path.join(base_dir, 'FlightHistory', 'flighthistoryevents.csv')
-  PrettifyFlightHistory(history_infile, history_outfile, t0)
-  PrettifyFlightEvents(events_infile, events_outfile, t0)
+  PrettifyFlightHistory(history_infile, events_infile, history_outfile, t0)
   GenerateHelperFeaturesFromHistory(history_outfile, features_outfile)
 
 
-def RunMe(date_str):
+def RunMe(parent_dir, date_str, output_subdir):
+  """Takes raw data for one day and transforms it."""
   t0 = dateutil.parser.parse(date_str).replace(tzinfo=dateutil.tz.tzutc())
-  base_dir = 'C:\\Dev\\Kaggle\\FlightQuest\\InitialTrainingSet\\%s' % date_str.replace('-', '_')
+  base_dir = os.path.join(parent_dir, date_str.replace('-', '_'))
   asdi_dir =  os.path.join(base_dir, 'ASDI')
-  out_dir = os.path.join(base_dir, 'good')
+  out_dir = os.path.join(base_dir, output_subdir)
+  os.makedirs(out_dir)
   if not os.path.exists(out_dir):
     os.mkdir(out_dir)
   ProcessFlightHistory(base_dir, out_dir, t0)
   ProcessASDI(asdi_dir, out_dir, t0)
-  MergeMETARFiles(date_str)
+  MergeMETARFiles(base_dir, out_dir, t0)
   print 'Done everything for ', date_str
 
 
@@ -153,10 +203,11 @@ def CheckFieldUnique(filepath, other_path, field_name):
       #yield lst[0]
       print df.values[x[i - 1][1]]
       print df.values[y[1]]
-      print ''
 
 
-for x in range(12, 26):
-  date_str = '2012-11-%s' % x
-  MergeMETARFiles(date_str)
-  print 'Merged for', date_str
+#constants.PARENT_DATA_DIR = PARENT_DATA_DIR = 'C:/Dev/Kaggle/FlightQuest/PublicLeaderboardSet/'
+
+#for x in range(26, 31):
+#  date_str = '2012-11-%s' % x
+#  RunMe()
+#  print 'Merged for', date_str
