@@ -2,16 +2,7 @@
 import numpy as np
 import os
 import pandas as pd
-from flight_quest.util import RMSE2, DirForDate
-
-
-def LoadForDay(date_str):
-  dir = DirForDate(date_str)
-  history_path = os.path.join(dir, 'good/flighthistory.csv')
-  features_path = os.path.join(dir, 'good/history_features.csv')
-  idf = pd.read_csv(history_path)
-  ndf = pd.read_csv(features_path)
-  return idf.merge(ndf, on='flight_history_id')
+from flight_quest.util import RMSE2, LoadForDay
 
 
 def DefaultAdjust():
@@ -49,4 +40,5 @@ def DelaysInAnAirportBetweenDays(df_one, df_two):
 def ByAirport(date_str):
   df = LoadForDay(date_str)
   return AddAirportAgg(df)
+
 

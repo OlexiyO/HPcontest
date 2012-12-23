@@ -65,16 +65,31 @@ def ExtractEstimatedArrivalTimes(events_in_filepath, t0):
   df_events = pd.read_csv(events_in_filepath)
   runway_arrival_dict = {}
   gate_arrival_dict = {}
-  for id, desc in zip(df_events.flight_history_id, df_events.data_updated):
+  latest_era_update = {}
+  latest_ega_update = {}
+  early = dateutil.parser.parse('2000-01-01 09:31:53.243000-08:00')
+  for id, when, desc in zip(df_events.flight_history_id, df_events.date_time_recorded, df_events.data_updated):
     if not isinstance(desc, basestring):
       #print 'Bad data_updated in %s: %s' % (events_in_filepath, desc)
       continue
-    t1 = ParseNewEstimationTime(desc, 'EGA', t0_notimezone)
-    if t1 > -100:
-      gate_arrival_dict.setdefault(id, t1)
-    t1 = ParseNewEstimationTime(desc, 'ERA', t0_notimezone)
-    if t1 > -100:
-      runway_arrival_dict.setdefault(id, t1)
+    moment = dateutil.parser.parse(when)
+    if ('%s' % id) == '280512854':
+      print 'When: ', when
+    if latest_ega_update.get(id, early) < moment:
+      t1 = ParseNewEstimationTime(desc, 'EGA', t0_notimezone)
+      if ('%s' % id) == '280512854':
+        print 'EGA t1: ', t1
+      if t1 > -500:
+        gate_arrival_dict[id] = t1
+        latest_ega_update[id] = moment
+
+    if latest_era_update.get(id, early) < moment:
+      t1 = ParseNewEstimationTime(desc, 'ERA', t0_notimezone)
+      if ('%s' % id) == '280512854':
+        print 'ERA t1: ', t1
+      if t1 > -500:
+        runway_arrival_dict[id] = t1
+        latest_era_update[id] = moment
 
   return gate_arrival_dict, runway_arrival_dict
 
@@ -183,7 +198,7 @@ def ProcessFlightHistory(base_dir, out_dir, t0):
   history_infile = os.path.join(base_dir, 'FlightHistory', 'flighthistory.csv')
   events_infile = os.path.join(base_dir, 'FlightHistory', 'flighthistoryevents.csv')
   PrettifyFlightHistory(history_infile, events_infile, history_outfile, t0)
-  GenerateHelperFeaturesFromHistory(history_outfile, features_outfile)
+  #GenerateHelperFeaturesFromHistory(history_outfile, features_outfile)
 
 
 def RunMe(parent_dir, date_str, output_subdir):
@@ -195,8 +210,8 @@ def RunMe(parent_dir, date_str, output_subdir):
   if not os.path.isdir(out_dir):
     os.makedirs(out_dir)
   ProcessFlightHistory(base_dir, out_dir, t0)
-  ProcessASDI(asdi_dir, out_dir, t0)
-  MergeMETARFiles(base_dir, out_dir, t0)
+  #ProcessASDI(asdi_dir, out_dir, t0)
+  #MergeMETARFiles(base_dir, out_dir, t0)
   print 'Done everything for ', date_str
 
 
@@ -217,11 +232,24 @@ def CheckFieldUnique(filepath, other_path, field_name):
 
 
 def main():
+  for x in range(26, 31):
+    date_str = '2012-11-%s' % x
+    parent_dir = local_constants.LEADERBOARD_DATA_DIR
+    RunMe(parent_dir, date_str, 'good')
+    print 'Merged for', date_str
+
+  for x in range(1, 10):
+    date_str = '2012-12-0%d' % x
+    parent_dir = local_constants.LEADERBOARD_DATA_DIR
+    RunMe(parent_dir, date_str, 'good')
+    print 'Merged for', date_str
+
   for x in range(12, 26):
     date_str = '2012-11-%s' % x
     parent_dir = local_constants.PARENT_DATA_DIR
-    RunMe(parent_dir, date_str, 'good_1')
+    RunMe(parent_dir, date_str, 'good')
     print 'Merged for', date_str
 
 
-main()
+if __name__ == "__main__":
+  main()

@@ -3,7 +3,6 @@ import dateutil
 import pandas as pd
 import numpy as np
 from flight_quest import util
-from flight_quest.util import DirForDate
 
 
 """This module parses data in metar directory.

@@ -25,3 +25,9 @@ class ConvertTimeTest(unittest.TestCase):
     desc = 'EGA- Old=11/15/12 06:07 ERA- New=11/15/12 12:15'
     self.assertEqual(735, convert_data.ParseNewEstimationTime(desc, 'ERA', t0))
     self.assertEqual(-1000, convert_data.ParseNewEstimationTime(desc, 'EGA', t0))
+
+  def testBug(self):
+    t0 = datetime.datetime(2012, 11, 26, 0, 0)
+    desc = "ARD- New=11/26/12 08:58, ERA- Old=11/26/12 11:02 New=11/26/12 10:57, EGA- Old=11/26/12 11:04 New=11/26/12 11:01"
+    self.assertEqual(657, convert_data.ParseNewEstimationTime(desc, 'ERA', t0))
+    self.assertEqual(661, convert_data.ParseNewEstimationTime(desc, 'EGA', t0))
