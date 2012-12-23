@@ -68,12 +68,10 @@ def GenerateOneDay(parent_dir, date_str):
                    'last_ega_update',
                    'last_era_update_time',
                    'last_ega_update_time']
-  df_joined.to_csv(os.path.join(output_dir, 'training.csv'), cols=flight_fields, sep='\t')
+  df_joined.to_csv(os.path.join(output_dir, 'training.csv'), cols=flight_fields)
 
 def main():
   GenerateOneDay(local_constants.PARENT_DATA_DIR, '2012-11-12')
 
 if __name__ == '__main__':
   main()
-else:
-  print __name__
