@@ -94,6 +94,19 @@ def ExtractEstimatedArrivalTimes(events_in_filepath, t0):
   return gate_arrival_dict, runway_arrival_dict
 
 
+def PrettifyFlightEvents(events_in_filepath, events_out_filepath, t0):
+  t0_notimezone = t0.replace(tzinfo=None)
+  df_events = pd.read_csv(events_in_filepath)
+  df_events = df_events[df_events.data_updated.map(lambda x: isinstance(x, basestring))]
+
+  df_events.date_time_recorded = df_events.date_time_recorded.map(dateutil.parser.parse)
+  df_events['ega_update'] = df_events.data_updated.map(lambda desc: ParseNewEstimationTime(desc, 'EGA', t0_notimezone))
+  df_events['era_update'] = df_events.data_updated.map(lambda desc: ParseNewEstimationTime(desc, 'ERA', t0_notimezone))
+  df_events = df_events[(df_events.ega_update > -1000) | (df_events.era_update > -1000)]
+
+  df_events.to_csv(events_out_filepath, index=False, cols=['flight_history_id', 'date_time_recorded', 'ega_update', 'era_update'])
+
+
 def PrettifyFlightHistory(history_infile, events_infile, history_outfile, t0):
   col_names = [
       'published_departure',
@@ -195,10 +208,12 @@ def ProcessFlightHistory(base_dir, out_dir, t0):
   """
   history_outfile = os.path.join(out_dir, 'flighthistory.csv')
   features_outfile = os.path.join(out_dir, 'history_features.csv')
+  events_outfile = os.path.join(out_dir, 'history_event_features.csv')
   history_infile = os.path.join(base_dir, 'FlightHistory', 'flighthistory.csv')
   events_infile = os.path.join(base_dir, 'FlightHistory', 'flighthistoryevents.csv')
   PrettifyFlightHistory(history_infile, events_infile, history_outfile, t0)
-  #GenerateHelperFeaturesFromHistory(history_outfile, features_outfile)
+  PrettifyFlightEvents(events_infile, events_outfile, t0)
+  GenerateHelperFeaturesFromHistory(history_outfile, features_outfile)
 
 
 def RunMe(parent_dir, date_str, output_subdir):
@@ -210,8 +225,8 @@ def RunMe(parent_dir, date_str, output_subdir):
   if not os.path.isdir(out_dir):
     os.makedirs(out_dir)
   ProcessFlightHistory(base_dir, out_dir, t0)
-  #ProcessASDI(asdi_dir, out_dir, t0)
-  #MergeMETARFiles(base_dir, out_dir, t0)
+  ProcessASDI(asdi_dir, out_dir, t0)
+  MergeMETARFiles(base_dir, out_dir, t0)
   print 'Done everything for ', date_str
 
 
