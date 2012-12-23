@@ -99,7 +99,8 @@ def PrettifyFlightEvents(events_in_filepath, events_out_filepath, t0):
   df_events = pd.read_csv(events_in_filepath)
   df_events = df_events[df_events.data_updated.map(lambda x: isinstance(x, basestring))]
 
-  df_events.date_time_recorded = df_events.date_time_recorded.map(dateutil.parser.parse)
+  df_events.date_time_recorded = df_events.date_time_recorded.map(lambda x: int(DateStrToMinutes(x, t0)))
+  # The next two will not include arrival airport offset, because it is inconvenient to read it here.
   df_events['ega_update'] = df_events.data_updated.map(lambda desc: ParseNewEstimationTime(desc, 'EGA', t0_notimezone))
   df_events['era_update'] = df_events.data_updated.map(lambda desc: ParseNewEstimationTime(desc, 'ERA', t0_notimezone))
   df_events = df_events[(df_events.ega_update > -1000) | (df_events.era_update > -1000)]
