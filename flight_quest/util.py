@@ -20,14 +20,16 @@ def RMSE2(ser1, ser2):
   return math.sqrt(np.mean(np.power(ser1 - ser2, 2)))
 
 
-def Plot(x, ys, style='.', line=None):
+def Plot(x, ys, style='.', line=None, filter=None):
+  filtered_x = x[filter] if (filter is not None) else x
   colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
   Y = [ys] if isinstance(ys, pd.Series) else ys
+  Y = [y[filter] for y in Y] if (filter is not None) else Y
   plt.cla()
   for y, color in zip(Y, colors):
-    plt.plot(x, y, '%s%s' % (color, style))
+    plt.plot(filtered_x, y, '%s%s' % (color, style))
   if line is not None:
-    plt.plot(x, Y[0].map(lambda x: line), 'k-')
+    plt.plot(filtered_x, Y[0].map(lambda x: line), 'k-')
   plt.show()
 
 
