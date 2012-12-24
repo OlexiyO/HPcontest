@@ -41,7 +41,7 @@ def DateStrToMinutes(s, t0):
   if not s:
     return s
   try:
-    t1 = dateutil.parser.parse(s.replace('_', '-'))
+    t1 = dateutil.parser.parse(s)
     return (t1 - t0).total_seconds() / 60.
   except ValueError:
     return ''
