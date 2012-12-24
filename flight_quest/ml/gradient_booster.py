@@ -111,20 +111,25 @@ def main():
   for n in range(13, 20):
     DF[n] = util.LoadForDay('2012-11-%d' % n, parent_dir=local_constants.PARENT_DATA_DIR)
     funcs[n] = LearnGradientBoost([DF[n].runway_delay], DF[n].taxi_arrival_delta,
-                                  param_overrides={'n_estimators': 1250})  # Change 1250 --> 250 --> 150 --> 5
+                                  param_overrides={'n_estimators': 250})  # Change 1250 --> 250 --> 150 --> 5
 
   T = 20 - 13
-  data = [([0] * T) for _ in range(T + 1)]
+  data = [([0] * T) for _ in range(T + 2)]
   for n in range(13, 20):
     X, y = PrepareForBoost([DF[n].runway_delay], DF[n].taxi_arrival_delta)
     P = y * 0
+    OOB = y * 0
     for m in range(13, 20):
       p1 = funcs[m].predict(X)
       data[m - 13][n - 13] = metrics.mean_squared_error(p1, y)
       P += p1
+      if m != n:
+        OOB += p1
     data[20 - 13][n - 13] = metrics.mean_squared_error(P / T, y)
+    data[21 - 13][n - 13] = metrics.mean_squared_error(OOB / (T - 1), y)
 
   for i, d in enumerate(data):
+    ind = i + 13
     print i + 13 if i < T else 'AV', ['%.1f' % x for x in d]
 
 
