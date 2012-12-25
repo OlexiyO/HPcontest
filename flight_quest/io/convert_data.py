@@ -2,6 +2,7 @@ import os
 import shutil
 import datetime
 import dateutil
+import itertools
 import pandas as pd
 from flight_quest.io import local_constants
 from flight_quest.io.parse_METAR import MergeMETARFiles
@@ -166,7 +167,7 @@ def ProcessASDIWayPointFile(in_path, out_path):
 
   with open(in_path) as fin, open(out_path, 'w') as fout:
     fout.write(fin.readline())  # First line is title -- copy with no changes.
-    fout.writelines(map(ShortenLine, fin))
+    fout.writelines(itertools.imap(ShortenLine, fin))
 
 
 def ProcessASDIPositionFile(in_path, out_path, t0):
@@ -181,7 +182,7 @@ def ProcessASDIPositionFile(in_path, out_path, t0):
 
   with open(in_path) as fin, open(out_path, 'w') as fout:
     fout.write(fin.readline())  # First line is title -- copy with no changes.
-    fout.writelines(map(ShortenLine, fin))
+    fout.writelines(itertools.imap(ShortenLine, fin))
 
 
 def ProcessASDI(in_dir, out_dir, t0):
@@ -248,21 +249,22 @@ def CheckFieldUnique(filepath, other_path, field_name):
 
 
 def main():
-  for x in range(26, 31):
+  for x in range(25, 26):
     date_str = '2012-11-%s' % x
-    parent_dir = local_constants.LEADERBOARD_DATA_DIR
+    parent_dir = local_constants.PARENT_DATA_DIR
     RunMe(parent_dir, date_str, 'good')
     print 'Merged for', date_str
+
+  return
+  for x in range(26, 31):
+      date_str = '2012-11-%s' % x
+      parent_dir = local_constants.LEADERBOARD_DATA_DIR
+      RunMe(parent_dir, date_str, 'good')
+      print 'Merged for', date_str
 
   for x in range(1, 10):
     date_str = '2012-12-0%d' % x
     parent_dir = local_constants.LEADERBOARD_DATA_DIR
-    RunMe(parent_dir, date_str, 'good')
-    print 'Merged for', date_str
-
-  for x in range(12, 26):
-    date_str = '2012-11-%s' % x
-    parent_dir = local_constants.PARENT_DATA_DIR
     RunMe(parent_dir, date_str, 'good')
     print 'Merged for', date_str
 
