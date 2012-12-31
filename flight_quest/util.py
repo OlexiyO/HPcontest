@@ -29,7 +29,11 @@ def Plot(x, ys, style='.', line=None, filter=None):
   for y, color in zip(Y, colors):
     plt.plot(filtered_x, y, '%s%s' % (color, style))
   if line is not None:
-    plt.plot(filtered_x, Y[0].map(lambda x: line), 'k-')
+    try:
+      for l in line:
+        plt.plot(filtered_x, Y[0].map(lambda x: l), 'k-')
+    except TypeError, te:
+      plt.plot(filtered_x, Y[0].map(lambda x: line), 'k-')
   plt.show()
 
 

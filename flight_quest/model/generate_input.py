@@ -54,8 +54,8 @@ def GenerateOneDay(parent_dir, date_str):
           df_joined.last_era_update_time.set_value(flight_id, time)
           df_joined.last_era_update.set_value(flight_id, era)
 
-  df_joined.last_era_update -= 60 * df_joined.arrival_airport_timezone_offset
-  df_joined.last_ega_update -= 60 * df_joined.arrival_airport_timezone_offset
+  df_joined.last_era_update -= 60 * df_joined.arrival_airport_timezone_offset * (df_joined.last_era_update_time > 0)
+  df_joined.last_ega_update -= 60 * df_joined.arrival_airport_timezone_offset * (df_joined.last_ega_update_time > 0)
 
   flight_fields = ['scheduled_flight_time',
                    'scheduled_runway_arrival',
