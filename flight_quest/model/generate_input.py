@@ -62,6 +62,7 @@ def GenerateOneDay(parent_dir, date_str):
                    'scheduled_gate_arrival',
                    'actual_runway_departure',
                    'actual_runway_arrival',
+                   'actual_gate_arrival',
                    'cutoff_delta',
                    'cutoff_time',
                    'last_era_update',
@@ -70,8 +71,18 @@ def GenerateOneDay(parent_dir, date_str):
                    'last_ega_update_time']
   df_joined.to_csv(os.path.join(output_dir, 'training.csv'), cols=flight_fields)
 
+
 def main():
-  GenerateOneDay(local_constants.PARENT_DATA_DIR, '2012-11-12')
+  for n in range(26, 31):
+    GenerateOneDay(local_constants.LEADERBOARD_DATA_DIR, '2012-11-%02d' % n)
+
+  for n in range(12, 26):
+    GenerateOneDay(local_constants.PARENT_DATA_DIR, '2012-11-%02d' % n)
+
+  for n in range(1, 10):
+    GenerateOneDay(local_constants.LEADERBOARD_DATA_DIR, '2012-12-%02d' % n)
+
+
 
 if __name__ == '__main__':
   main()

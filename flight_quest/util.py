@@ -10,13 +10,9 @@ def DateToMinutes(date, initial_date):
   return date - initial_date if isinstance(date, pd.lib.Timestamp) else -1000
 
 
-def RMSE(df, name1, name2):
-  filtered = df[df[name1] + df[name2] > 0]
-  total = np.mean(np.power(filtered[name1] - filtered[name2], 2))
-  return math.sqrt(total)
-
-
-def RMSE2(ser1, ser2):
+def RMSE(ser1, ser2):
+  assert len(ser1) == len(ser2)
+  assert all((np.isnan(b) or not np.isnan(a)) for a, b in zip(ser1, ser2))
   return math.sqrt(np.mean(np.power(ser1 - ser2, 2)))
 
 
@@ -81,4 +77,12 @@ def OR(a, b):
 
 
 def AND(a, b):
-  return a.combine(b, lambda x, y: x if np.isnan(y) else np.nan)
+  return a.combine(b, lambda x, y: x if not np.isnan(y) else np.nan)
+
+
+def MultiOR(a, *args):
+  r = a
+  for b in args:
+    r = r.combine(b, lambda x, y: y if np.isnan(x) else x)
+  return r
+

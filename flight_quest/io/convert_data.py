@@ -6,6 +6,7 @@ import itertools
 import pandas as pd
 from flight_quest.io import local_constants
 from flight_quest.io.parse_METAR import MergeMETARFiles
+from flight_quest.model import generate_input
 from flight_quest.util import DateStrToMinutes
 
 
@@ -20,16 +21,19 @@ def TransformWeatherStations():
 MISSING = 'MISSING'
 
 
+def IsDateValid(s):
+  if len(s) != 14:
+    return False
+  if not (s[2] == '/' and s[5] == '/' and s[8] == ' ' and s[11] == ':'):
+    return False
+  for i, c in enumerate(s):
+    if i not in [2, 5, 8, 11] and not c.isdigit():
+      return False
+  return True
+
+
 def ParseDateTime(s, t0_notimezone):
   # s = "11/15/12 18:36"
-  def IsDateValid(s):
-    if len(s) != 14:
-      return False
-    for i, c in enumerate(s):
-      if i not in [2, 5, 8, 11] and not c.isdigit():
-        return False
-    return s[2] == '/' and s[5] == '/' and s[8] == ' ' and s[11] == ':'
-
   if not IsDateValid(s):
     return -1000
   month = int(s[:2])
@@ -61,52 +65,47 @@ def ParseNewEstimationTime(desc, field_name, t0_notimezone):
   return -1000
 
 
-def ExtractEstimatedArrivalTimes(events_in_filepath, t0):
-  t0_notimezone = t0.replace(tzinfo=None)
-  df_events = pd.read_csv(events_in_filepath)
-  runway_arrival_dict = {}
-  gate_arrival_dict = {}
-  latest_era_update = {}
-  latest_ega_update = {}
-  early = dateutil.parser.parse('2000-01-01 09:31:53.243000-08:00')
-  for id, when, desc in zip(df_events.flight_history_id, df_events.date_time_recorded, df_events.data_updated):
-    if not isinstance(desc, basestring):
-      #print 'Bad data_updated in %s: %s' % (events_in_filepath, desc)
-      continue
-    moment = dateutil.parser.parse(when)
-    if ('%s' % id) == '280512854':
-      print 'When: ', when
-    if latest_ega_update.get(id, early) < moment:
-      t1 = ParseNewEstimationTime(desc, 'EGA', t0_notimezone)
-      if ('%s' % id) == '280512854':
-        print 'EGA t1: ', t1
-      if t1 > -500:
-        gate_arrival_dict[id] = t1
-        latest_ega_update[id] = moment
-
-    if latest_era_update.get(id, early) < moment:
-      t1 = ParseNewEstimationTime(desc, 'ERA', t0_notimezone)
-      if ('%s' % id) == '280512854':
-        print 'ERA t1: ', t1
-      if t1 > -500:
-        runway_arrival_dict[id] = t1
-        latest_era_update[id] = moment
-
-  return gate_arrival_dict, runway_arrival_dict
-
-
 def PrettifyFlightEvents(events_in_filepath, events_out_filepath, t0):
   t0_notimezone = t0.replace(tzinfo=None)
   df_events = pd.read_csv(events_in_filepath)
   df_events = df_events[df_events.data_updated.map(lambda x: isinstance(x, basestring))]
 
-  df_events.date_time_recorded = df_events.date_time_recorded.map(lambda x: int(DateStrToMinutes(x, t0)))
+  df_events['date_time_recorded'] = df_events.date_time_recorded.map(lambda x: int(DateStrToMinutes(x, t0)))
   # The next two will not include arrival airport offset, because it is inconvenient to read it here.
   df_events['ega_update'] = df_events.data_updated.map(lambda desc: ParseNewEstimationTime(desc, 'EGA', t0_notimezone))
   df_events['era_update'] = df_events.data_updated.map(lambda desc: ParseNewEstimationTime(desc, 'ERA', t0_notimezone))
   df_events = df_events[(df_events.ega_update > -1000) | (df_events.era_update > -1000)]
 
   df_events.to_csv(events_out_filepath, index=False, cols=['flight_history_id', 'date_time_recorded', 'ega_update', 'era_update'])
+
+
+def ExtractEstimatedArrivalTimes(events_in_filepath, t0):
+  # TODO: Reuse code from generating model.
+  t0_notimezone = t0.replace(tzinfo=None)
+  df_events = pd.read_csv(events_in_filepath)
+  last_era_update = {}
+  last_ega_update = {}
+  last_era_update_time = {}
+  last_ega_update_time = {}
+  early = dateutil.parser.parse('2000-01-01 09:31:53.243000-08:00')
+  for id, when, desc in zip(df_events.flight_history_id, df_events.date_time_recorded, df_events.data_updated):
+    if not isinstance(desc, basestring):
+      #print 'Bad data_updated in %s: %s' % (events_in_filepath, desc)
+      continue
+    moment = dateutil.parser.parse(when)
+    if last_ega_update_time.get(id, early) < moment:
+      t1 = ParseNewEstimationTime(desc, 'EGA', t0_notimezone)
+      if t1 > -500:
+        last_ega_update[id] = t1
+        last_ega_update_time[id] = moment
+
+    if last_era_update_time.get(id, early) < moment:
+      t1 = ParseNewEstimationTime(desc, 'ERA', t0_notimezone)
+      if t1 > -500:
+        last_era_update[id] = t1
+        last_era_update_time[id] = moment
+
+  return last_era_update, last_era_update_time, last_ega_update, last_ega_update_time
 
 
 def PrettifyFlightHistory(history_infile, events_infile, history_outfile, t0):
@@ -122,13 +121,21 @@ def PrettifyFlightHistory(history_infile, events_infile, history_outfile, t0):
       'scheduled_runway_arrival',
       'actual_runway_arrival',]
   df = pd.read_csv(history_infile)
+
   for name in col_names:
     df[name] = df[name].map(lambda x : DateStrToMinutes(x, t0))
 
-  gate_arrival_dict, runway_arrival_dict = ExtractEstimatedArrivalTimes(events_infile, t0)
+  last_era_update, last_era_update_time, last_ega_update, last_ega_update_time = ExtractEstimatedArrivalTimes(events_infile, t0)
+
   # (-60 * df.arrival_airport_timezone_offset) is for time offset.
-  df['estimated_gate_arrival'] = df.flight_history_id.map(gate_arrival_dict) - (60 * df.arrival_airport_timezone_offset)
-  df['estimated_runway_arrival'] = df.flight_history_id.map(runway_arrival_dict)  - (60 * df.arrival_airport_timezone_offset)
+  adjust = 60 * df.arrival_airport_timezone_offset
+
+  # TODO(olexiy): set dtype to int.
+  str_date_time_to_secs = lambda x: int((x - t0).total_seconds() / 60.)
+  df['last_era_update'] = (df.flight_history_id.map(last_era_update) - adjust).map(int, na_action='ignore')
+  df['last_era_update_time'] = df.flight_history_id.map(last_era_update_time).map(str_date_time_to_secs, na_action='ignore')
+  df['last_ega_update'] = (df.flight_history_id.map(last_ega_update) - adjust).map(int, na_action='ignore')
+  df['last_ega_update_time'] = df.flight_history_id.map(last_ega_update_time).map(str_date_time_to_secs, na_action='ignore')
   df.to_csv(history_outfile, index=False)
 
 
@@ -208,14 +215,16 @@ def ProcessFlightHistory(base_dir, out_dir, t0):
   Args:
     t0: Midnight UTC for the day we are working with.
   """
+  history_infile = os.path.join(base_dir, 'FlightHistory', 'flighthistory.csv')
+  events_infile = os.path.join(base_dir, 'FlightHistory', 'flighthistoryevents.csv')
+
   history_outfile = os.path.join(out_dir, 'flighthistory.csv')
   features_outfile = os.path.join(out_dir, 'history_features.csv')
   events_outfile = os.path.join(out_dir, 'history_event_features.csv')
-  history_infile = os.path.join(base_dir, 'FlightHistory', 'flighthistory.csv')
-  events_infile = os.path.join(base_dir, 'FlightHistory', 'flighthistoryevents.csv')
+
   PrettifyFlightHistory(history_infile, events_infile, history_outfile, t0)
-  PrettifyFlightEvents(events_infile, events_outfile, t0)
-  GenerateHelperFeaturesFromHistory(history_outfile, features_outfile)
+  #PrettifyFlightEvents(events_infile, events_outfile, t0)
+  #GenerateHelperFeaturesFromHistory(history_outfile, features_outfile)
 
 
 def RunMe(parent_dir, date_str, output_subdir):
@@ -227,8 +236,8 @@ def RunMe(parent_dir, date_str, output_subdir):
   if not os.path.isdir(out_dir):
     os.makedirs(out_dir)
   ProcessFlightHistory(base_dir, out_dir, t0)
-  ProcessASDI(asdi_dir, out_dir, t0)
-  MergeMETARFiles(base_dir, out_dir, t0)
+  #ProcessASDI(asdi_dir, out_dir, t0)
+  #MergeMETARFiles(base_dir, out_dir, t0)
   print 'Done everything for ', date_str
 
 
@@ -249,21 +258,20 @@ def CheckFieldUnique(filepath, other_path, field_name):
 
 
 def main():
-  for x in range(25, 26):
+  for x in range(26, 31):
+    date_str = '2012-11-%s' % x
+    parent_dir = local_constants.LEADERBOARD_DATA_DIR
+    RunMe(parent_dir, date_str, 'good')
+    print 'Merged for', date_str
+
+  for x in range(12, 26):
     date_str = '2012-11-%s' % x
     parent_dir = local_constants.PARENT_DATA_DIR
     RunMe(parent_dir, date_str, 'good')
     print 'Merged for', date_str
 
-  return
-  for x in range(26, 31):
-      date_str = '2012-11-%s' % x
-      parent_dir = local_constants.LEADERBOARD_DATA_DIR
-      RunMe(parent_dir, date_str, 'good')
-      print 'Merged for', date_str
-
   for x in range(1, 10):
-    date_str = '2012-12-0%d' % x
+    date_str = '2012-12-%02d' % x
     parent_dir = local_constants.LEADERBOARD_DATA_DIR
     RunMe(parent_dir, date_str, 'good')
     print 'Merged for', date_str
