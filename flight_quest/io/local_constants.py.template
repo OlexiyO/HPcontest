@@ -3,3 +3,5 @@ PARENT_DATA_DIR = 'C:/Dev/Kaggle/FlightQuest/InitialTrainingSet/'
 LEADERBOARD_DATA_DIR = 'C:/Dev/Kaggle/FlightQuest/PublicLeaderboardSet/'
 
 OUTPUT_DIR = 'C:/Dev/Kaggle/FlightQuest/tmp/'
+
+OUTPUT_DIR = 'C:/Dev/Kaggle/FlightQuest/models/'

@@ -18,7 +18,7 @@ def RMSE(ser1, ser2):
 
 def Plot(x, ys, style='.', line=None, filter=None):
   filtered_x = x[filter] if (filter is not None) else x
-  colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
+  colors = ['b', 'r', 'g', 'c', 'm', 'y', 'k', 'w']
   Y = [ys] if isinstance(ys, pd.Series) else ys
   Y = [y[filter] for y in Y] if (filter is not None) else Y
   plt.cla()
@@ -28,7 +28,7 @@ def Plot(x, ys, style='.', line=None, filter=None):
     try:
       for l in line:
         plt.plot(filtered_x, Y[0].map(lambda x: l), 'k-')
-    except TypeError, te:
+    except TypeError:
       plt.plot(filtered_x, Y[0].map(lambda x: line), 'k-')
   plt.show()
 
@@ -44,7 +44,7 @@ def DateStrToMinutes(s, t0):
     t1 = dateutil.parser.parse(s)
     return (t1 - t0).total_seconds() / 60.
   except ValueError:
-    return ''
+    return np.nan
 
 
 def LoadForDay(date_str, parent_dir=local_constants.PARENT_DATA_DIR):
@@ -86,3 +86,17 @@ def MultiOR(a, *args):
     r = r.combine(b, lambda x, y: y if np.isnan(x) else x)
   return r
 
+
+def CountNan(x):
+  return len([y for y in x if np.isnan(y)])
+
+
+def FloorSeries(series):
+  # Debug: this won't change type to int if series has missing data.
+  return pd.Series(series.map(int, na_action='ignore'), dtype=np.int)
+
+
+def RoundSeries(series):
+  # Debug: this won't change type to int if series has missing data.
+  R = lambda x: int(x + .5)
+  return pd.Series(series.map(R, na_action='ignore'), dtype=np.int)

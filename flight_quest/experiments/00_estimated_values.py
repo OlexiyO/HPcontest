@@ -7,10 +7,6 @@ from flight_quest.io import local_constants
 from flight_quest.util import OR, AND
 
 
-# CreateOutputForDay('2012-11-26', local_constants.LEADERBOARD_DATA_DIR, filename):
-# or
-
-
 def CreateOutputForDay(date_str, parent_dir, output_file, header=True):
   """Load data from input, process them and save to a file.
 

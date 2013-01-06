@@ -1,3 +1,4 @@
+import numpy as np
 import os
 import shutil
 import datetime
@@ -6,11 +7,42 @@ import itertools
 import pandas as pd
 from flight_quest.io import local_constants
 from flight_quest.io.parse_METAR import MergeMETARFiles
-from flight_quest.model import generate_input
-from flight_quest.util import DateStrToMinutes
-
+from flight_quest.util import DateStrToMinutes, RoundSeries, FloorSeries
 
 OUT_DIR = 'good'
+
+
+def AddLastEstimationTimes(df_main, df_all_estimation, cutoff_series=None):
+  df_main['last_era_update'] = df_main.scheduled_runway_arrival
+  df_main['last_ega_update'] = df_main.scheduled_gate_arrival
+  df_main['last_era_update_time'] = np.nan
+  df_main['last_ega_update_time'] = np.nan
+  for flight_id, time_recorded, ega, era in itertools.izip(df_all_estimation.flight_history_id,
+                                                           df_all_estimation.date_time_recorded,
+                                                           df_all_estimation.ega_update,
+                                                           df_all_estimation.era_update):
+    if ((cutoff_series is not None) and (flight_id in cutoff_series) and
+        (time_recorded >= cutoff_series.get_value(flight_id))):
+      continue
+
+    # This filters out NANs as well.
+    if ega > -1000:
+      print flight_id
+      print flight_id in df_main.index
+      prev_ega_update_time = df_main.last_ega_update_time.get_value(flight_id)
+      if np.isnan(prev_ega_update_time) or time_recorded > prev_ega_update_time:
+        df_main.last_ega_update_time.set_value(flight_id, time_recorded)
+        df_main.last_ega_update.set_value(flight_id, ega)
+    if era > -1000:
+      prev_era_update_time = df_main.last_era_update_time.get_value(flight_id)
+      if np.isnan(prev_era_update_time) or time_recorded > prev_era_update_time:
+        df_main.last_era_update_time.set_value(flight_id, time_recorded)
+        df_main.last_era_update.set_value(flight_id, era)
+
+  df_main.last_era_update -= 60 * df_main.arrival_airport_timezone_offset * (df_main.last_era_update_time > 0)
+  df_main.last_ega_update -= 60 * df_main.arrival_airport_timezone_offset * (df_main.last_ega_update_time > 0)
+  df_main['last_era_update_time'] = FloorSeries(df_main.last_era_update_time)
+  df_main['last_ega_update_time'] = FloorSeries(df_main.last_ega_update_time)
 
 
 def TransformWeatherStations():
@@ -70,45 +102,20 @@ def PrettifyFlightEvents(events_in_filepath, events_out_filepath, t0):
   df_events = pd.read_csv(events_in_filepath)
   df_events = df_events[df_events.data_updated.map(lambda x: isinstance(x, basestring))]
 
-  df_events['date_time_recorded'] = df_events.date_time_recorded.map(lambda x: int(DateStrToMinutes(x, t0)))
+  # Save it as float.
+  df_events['date_time_recorded'] = df_events.date_time_recorded.map(lambda x: DateStrToMinutes(x, t0))
   # The next two will not include arrival airport offset, because it is inconvenient to read it here.
-  df_events['ega_update'] = df_events.data_updated.map(lambda desc: ParseNewEstimationTime(desc, 'EGA', t0_notimezone))
   df_events['era_update'] = df_events.data_updated.map(lambda desc: ParseNewEstimationTime(desc, 'ERA', t0_notimezone))
+  df_events['ega_update'] = df_events.data_updated.map(lambda desc: ParseNewEstimationTime(desc, 'EGA', t0_notimezone))
   df_events = df_events[(df_events.ega_update > -1000) | (df_events.era_update > -1000)]
+  df_events['era_update'] = FloorSeries(df_events.era_update.map(lambda x: np.nan if x < -990 else x))
+  df_events['ega_update'] = FloorSeries(df_events.ega_update.map(lambda x: np.nan if x < -990 else x))
 
   df_events.to_csv(events_out_filepath, index=False, cols=['flight_history_id', 'date_time_recorded', 'ega_update', 'era_update'])
 
 
-def ExtractEstimatedArrivalTimes(events_in_filepath, t0):
-  # TODO: Reuse code from generating model.
-  t0_notimezone = t0.replace(tzinfo=None)
-  df_events = pd.read_csv(events_in_filepath)
-  last_era_update = {}
-  last_ega_update = {}
-  last_era_update_time = {}
-  last_ega_update_time = {}
-  early = dateutil.parser.parse('2000-01-01 09:31:53.243000-08:00')
-  for id, when, desc in zip(df_events.flight_history_id, df_events.date_time_recorded, df_events.data_updated):
-    if not isinstance(desc, basestring):
-      #print 'Bad data_updated in %s: %s' % (events_in_filepath, desc)
-      continue
-    moment = dateutil.parser.parse(when)
-    if last_ega_update_time.get(id, early) < moment:
-      t1 = ParseNewEstimationTime(desc, 'EGA', t0_notimezone)
-      if t1 > -500:
-        last_ega_update[id] = t1
-        last_ega_update_time[id] = moment
-
-    if last_era_update_time.get(id, early) < moment:
-      t1 = ParseNewEstimationTime(desc, 'ERA', t0_notimezone)
-      if t1 > -500:
-        last_era_update[id] = t1
-        last_era_update_time[id] = moment
-
-  return last_era_update, last_era_update_time, last_ega_update, last_ega_update_time
-
-
-def PrettifyFlightHistory(history_infile, events_infile, history_outfile, t0):
+def PrettifyFlightHistory(history_infile, fh_events_file, history_outfile, t0):
+  df = pd.read_csv(history_infile, index_col='flight_history_id')
   col_names = [
       'published_departure',
       'published_arrival',
@@ -120,23 +127,13 @@ def PrettifyFlightHistory(history_infile, events_infile, history_outfile, t0):
       'actual_runway_departure',
       'scheduled_runway_arrival',
       'actual_runway_arrival',]
-  df = pd.read_csv(history_infile)
 
   for name in col_names:
     df[name] = df[name].map(lambda x : DateStrToMinutes(x, t0))
 
-  last_era_update, last_era_update_time, last_ega_update, last_ega_update_time = ExtractEstimatedArrivalTimes(events_infile, t0)
-
-  # (-60 * df.arrival_airport_timezone_offset) is for time offset.
-  adjust = 60 * df.arrival_airport_timezone_offset
-
-  # TODO(olexiy): set dtype to int.
-  str_date_time_to_secs = lambda x: int((x - t0).total_seconds() / 60.)
-  df['last_era_update'] = (df.flight_history_id.map(last_era_update) - adjust).map(int, na_action='ignore')
-  df['last_era_update_time'] = df.flight_history_id.map(last_era_update_time).map(str_date_time_to_secs, na_action='ignore')
-  df['last_ega_update'] = (df.flight_history_id.map(last_ega_update) - adjust).map(int, na_action='ignore')
-  df['last_ega_update_time'] = df.flight_history_id.map(last_ega_update_time).map(str_date_time_to_secs, na_action='ignore')
-  df.to_csv(history_outfile, index=False)
+  df_events = pd.read_csv(fh_events_file)
+  AddLastEstimationTimes(df, df_events)
+  df.to_csv(history_outfile)
 
 
 def GenerateHelperFeaturesFromHistory(in_filepath, out_filepath):
@@ -222,8 +219,8 @@ def ProcessFlightHistory(base_dir, out_dir, t0):
   features_outfile = os.path.join(out_dir, 'history_features.csv')
   events_outfile = os.path.join(out_dir, 'history_event_features.csv')
 
-  PrettifyFlightHistory(history_infile, events_infile, history_outfile, t0)
   #PrettifyFlightEvents(events_infile, events_outfile, t0)
+  PrettifyFlightHistory(history_infile, events_outfile, history_outfile, t0)
   #GenerateHelperFeaturesFromHistory(history_outfile, features_outfile)
 
 
@@ -241,23 +238,11 @@ def RunMe(parent_dir, date_str, output_subdir):
   print 'Done everything for ', date_str
 
 
-def CheckFieldUnique(filepath, other_path, field_name):
-  df = pd.read_csv(filepath)
-  other_df = pd.read_csv(other_path)
-  dd = df[field_name].to_dict()
-  x = sorted((v, k) for k, v in dd.iteritems())
-  for i, y in enumerate(x):
-    if i > 0 and x[i - 1][0] == y[0]:
-      #print filepath, y
-      #lst = other_df.weather_station_code[(other_df.metar_reports_id == y)].tolist()
-      #assert len(lst) == 1
-      #yield lst[0]
-      print df.values[x[i - 1][1]]
-      print df.values[y[1]]
-      print ''
-
-
 def main():
+  date_str = '2012-11-13'
+  parent_dir = local_constants.PARENT_DATA_DIR
+  RunMe(parent_dir, date_str, 'good')
+  return
   for x in range(26, 31):
     date_str = '2012-11-%s' % x
     parent_dir = local_constants.LEADERBOARD_DATA_DIR
