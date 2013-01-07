@@ -79,7 +79,7 @@ def main():
   MODEL_NAME = 'model3'
   # Uncomment this to train model from scratch.
   #predictor, score = _TrainModel(MODEL_NAME)
-  fname = 'C:/Dev/Kaggle/FlightQuest/models/model3.model_40_04'
+  fname = '%s/model3.model_40_04' % local_constants.OUTPUT_DIR
   predictor = base_predictor.LoadPredictor(fname)
   #PlotPredictor(predictor)
   #PrintRMSEs(predictor)
