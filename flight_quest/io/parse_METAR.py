@@ -43,7 +43,7 @@ CLOUD_TYPES = [
 def GetCloudsType(desc):
   for ind, ct in CLOUD_TYPES:
     if desc.startswith(ct):
-      return (2 * ind)
+      return 2 * ind
   print 'Unknown cloud type', desc
   assert False
 
@@ -90,7 +90,7 @@ def ParseWindDirectionDelta(s):
   in4 = s.index(' degrees', in2 + 8)
   assert in2 - in1 == 3, s
   assert in4 - in3 == 3, s
-  return (360 + int(s[in3:in4]) - int(s[in1:in2])) % 360
+  return (int(s[in3:in4]) - int(s[in1:in2])) % 360
 
 
 def ProcessReportsCombined(main_filepath, t0):
