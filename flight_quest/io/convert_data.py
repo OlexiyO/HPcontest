@@ -27,8 +27,8 @@ def AddLastEstimationTimes(df_main, df_all_estimation, cutoff_series=None):
 
     # This filters out NANs as well.
     if ega > -1000:
-      print flight_id
-      print flight_id in df_main.index
+      #print flight_id
+      #print flight_id in df_main.index
       prev_ega_update_time = df_main.last_ega_update_time.get_value(flight_id)
       if np.isnan(prev_ega_update_time) or time_recorded > prev_ega_update_time:
         df_main.last_ega_update_time.set_value(flight_id, time_recorded)
@@ -219,9 +219,9 @@ def ProcessFlightHistory(base_dir, out_dir, t0):
   features_outfile = os.path.join(out_dir, 'history_features.csv')
   events_outfile = os.path.join(out_dir, 'history_event_features.csv')
 
-  #PrettifyFlightEvents(events_infile, events_outfile, t0)
+  PrettifyFlightEvents(events_infile, events_outfile, t0)
   PrettifyFlightHistory(history_infile, events_outfile, history_outfile, t0)
-  #GenerateHelperFeaturesFromHistory(history_outfile, features_outfile)
+  GenerateHelperFeaturesFromHistory(history_outfile, features_outfile)
 
 
 def RunMe(parent_dir, date_str, output_subdir):
@@ -232,14 +232,14 @@ def RunMe(parent_dir, date_str, output_subdir):
   out_dir = os.path.join(base_dir, output_subdir)
   if not os.path.isdir(out_dir):
     os.makedirs(out_dir)
-  #ProcessFlightHistory(base_dir, out_dir, t0)
-  #ProcessASDI(asdi_dir, out_dir, t0)
+  ProcessFlightHistory(base_dir, out_dir, t0)
+  ProcessASDI(asdi_dir, out_dir, t0)
   MergeMETARFiles(base_dir, out_dir, t0)
   print 'Done everything for ', date_str
 
 
 def main():
-  date_str = '2012-11-16'
+  date_str = '2012-11-12'
   parent_dir = local_constants.PARENT_DATA_DIR
   RunMe(parent_dir, date_str, 'good')
   return
