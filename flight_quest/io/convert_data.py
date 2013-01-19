@@ -21,6 +21,10 @@ def AddLastEstimationTimes(df_main, df_all_estimation, cutoff_series=None):
                                                            df_all_estimation.date_time_recorded,
                                                            df_all_estimation.ega_update,
                                                            df_all_estimation.era_update):
+    if flight_id not in df_main:
+      # Ignore flights filtered out from main data source.
+      continue
+
     if ((cutoff_series is not None) and (flight_id in cutoff_series) and
         (time_recorded >= cutoff_series.get_value(flight_id))):
       continue
