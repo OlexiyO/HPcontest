@@ -54,6 +54,7 @@ def ParseSkys(sky_filepath):
 
   data = []
   prev = {}
+  CLOUDS_COL, HEIGHT_COL, CUMULUS_COL = range(3)
   for metar_id, desc in itertools.izip(sky_df.metar_reports_id, sky_df.sky_condition):
     desc = desc.lower()
     new_data = (metar_id, [GetCloudsType(desc), GetHeight(desc), Cumulus(desc)])
@@ -80,8 +81,8 @@ def ProcessSky(sky_filepath):
 def ParseWindDirectionDelta(s):
   # Each string is formatted as
   # "Wind variable from XXX degrees to YYY degrees"
-  #if not isinstance(s, basestring):
-  #  return 0
+  if not isinstance(s, basestring):
+    return 0
   in1 = s.index('from ') + 5
   in2 = s.index(' degrees')
   in3 = s.index('to ') + 3
