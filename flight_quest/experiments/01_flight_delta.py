@@ -40,8 +40,8 @@ def _TrainModel(MODEL_NAME):
   param_overrides = {'n_estimators': 1000, 'min_samples_leaf': 5, 'learn_rate': .05}
   for x in range(10):
     predictor, score = gradient_booster.Train(
-        DF, input_func, output_func, param_overrides=param_overrides, training_filter=training_filter,
-        fname=fname + '_40_only_to_22_%02d' % x, DF_test=DF_test, min_steps=5)
+        DF, input_func, output_func, training_filter=training_filter, fname=fname + '_40_%02d' % x,
+        DF_test=DF_test, min_steps=40)
     if score > best_score:
       best_predictor, best_score = predictor, score
 
@@ -77,10 +77,10 @@ def PlotPredictor(predictor):
 
 
 def main():
-  MODEL_NAME = 'model4'
+  MODEL_NAME = 'model3'
   # Uncomment this to train model from scratch.
   #predictor, score = _TrainModel(MODEL_NAME)
-  fname = 'C:/Dev/Kaggle/FlightQuest/models/model3.model_40_only_to_22_00'
+  fname = 'C:/Dev/Kaggle/FlightQuest/models/model3.model_40_04'
   predictor = base_predictor.LoadPredictor(fname)
   PlotPredictor(predictor)
   PrintRMSEs(predictor)
