@@ -100,3 +100,14 @@ def RoundSeries(series):
   # Debug: this won't change type to int if series has missing data.
   R = lambda x: int(x + .5)
   return pd.Series(series.map(R, na_action='ignore'), dtype=np.int)
+
+
+def assertEq(a, b):
+  assert a == b, '%d != %d' % (a, b)
+
+def assertSameLen(a, b):
+  assert len(a) == len(b), '%d != %d' % (len(a), len(b))
+
+
+def BestScoreFrom(scores, from_step=0):
+  return scores[from_step:].index(min(scores[from_step:])) + from_step

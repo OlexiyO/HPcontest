@@ -45,7 +45,7 @@ def main():
   fname = os.path.join(local_constants.TMP_DIR, 'models2')
 
   #CrossValidation()
-  # gradient_booster.Train(DF, input_func, output_func, training_filter=training_filter, fname=fname)
+  # gradient_booster.TrainOnSeriesOfDF(DF, input_func, output_func, training_filter=training_filter, fname=fname)
   #return
   DF = []
   for n in range(22, 26):

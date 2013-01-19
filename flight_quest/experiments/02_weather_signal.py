@@ -37,7 +37,7 @@ def _TrainModel(MODEL_NAME):
   best_score = 0
   best_predictor = None
   for x in range(10):
-    predictor, score = gradient_booster.Train(
+    predictor, score = gradient_booster.TrainOnSeriesOfDF(
         DF, input_func, output_func, training_filter=training_filter, fname=fname + '_40_only_to_22_%02d' % x,
         DF_test=DF_test, min_steps=40)
     if score > best_score:
@@ -61,7 +61,7 @@ def PrintRMSEs(predictor):
     DF_test.append(pd.read_csv(fpath, index_col='flight_history_id'))
 
   input_func = lambda df: [(df.last_era_update - df.last_era_update_time)]
-  PredictRunwayRMSE(DF, predictor, input_func, 'Train')
+  PredictRunwayRMSE(DF, predictor, input_func, 'TrainOnSeriesOfDF')
   PredictRunwayRMSE(DF_test, predictor, input_func, 'Test')
 
 
