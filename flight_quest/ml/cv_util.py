@@ -36,6 +36,7 @@ def PredictRunwayRMSE(DF, predictor, input_func, name=None):
     predictor:
     input_func: Function, which takes a pd.DataFrame and returns a list of pd.Series,
         which will be used as input to ML training.
+    name: Just prints this name
   """
   if name:
     print 'Predicted win for %s:' % name

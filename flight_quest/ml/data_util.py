@@ -23,7 +23,7 @@ def _SplitIntoTrainAndTest(X, y, test_ratio):
   train_indices, test_indices = SplitIndices(len(y), test_ratio)
   y_train, y_test = y[train_indices], y[test_indices]
   X_train, X_test = X[train_indices], X[test_indices]
-  return X_test, X_train, y_test, y_train
+  return X_train, X_test, y_train, y_test
 
 
 def SplitIndices(L, test_ratio):

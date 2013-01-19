@@ -6,6 +6,23 @@ from flight_quest.io import local_constants
 from flight_quest.io.convert_data import AddLastEstimationTimes
 
 
+def GenerateWeatherPerFlight(df_joined, df_weather, output_file):
+  # TODO(generate this for leaderboard data as well
+  """Given cutoff points for flights, find latest available weather info for arrival airport.
+
+  Args:
+    df_joined: pd.DataFrame, As built in GenerateOneDay.
+    df_weather: pd.DataFrame, as read from metar_weather.csv.
+    output_file: string.
+  """
+  def GetAirportCode(station_code):
+    assert len(station_code) == 4, station_code
+    return station_code[1:] if station_code.startswith('K') else np.nan
+
+  df_weather['airport_code'] = df_weather.weather_station_code.map(
+      GetAirportCode, na_action='ignore')
+
+
 def GenerateOneDay(parent_dir, date_str):
   input_dir = os.path.join(parent_dir, date_str.replace('-', '_'), 'good')
   output_dir = os.path.join(parent_dir, date_str.replace('-', '_'), 'model')
@@ -39,6 +56,11 @@ def GenerateOneDay(parent_dir, date_str):
                    'last_era_update_time',
                    'last_ega_update_time']
   df_joined.to_csv(os.path.join(output_dir, 'training.csv'), cols=flight_fields)
+
+  metar_file = os.path.join(input_dir, 'metar_weather.csv')
+  df_weather = pd.read_csv(metar_file, index_col='metar_reports_id')
+  output_file = os.path.join(output_dir, 'per_flight_weather.csv')
+  GenerateWeatherPerFlight(df_joined, df_weather, output_file)
 
 
 def main():

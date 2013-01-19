@@ -232,14 +232,14 @@ def RunMe(parent_dir, date_str, output_subdir):
   out_dir = os.path.join(base_dir, output_subdir)
   if not os.path.isdir(out_dir):
     os.makedirs(out_dir)
-  ProcessFlightHistory(base_dir, out_dir, t0)
+  #ProcessFlightHistory(base_dir, out_dir, t0)
   #ProcessASDI(asdi_dir, out_dir, t0)
-  #MergeMETARFiles(base_dir, out_dir, t0)
+  MergeMETARFiles(base_dir, out_dir, t0)
   print 'Done everything for ', date_str
 
 
 def main():
-  date_str = '2012-11-13'
+  date_str = '2012-11-16'
   parent_dir = local_constants.PARENT_DATA_DIR
   RunMe(parent_dir, date_str, 'good')
   return

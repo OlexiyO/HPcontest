@@ -51,6 +51,9 @@ def GetCloudsType(desc):
 def ParseSkys(sky_filepath):
   sky_df = pd.read_csv(sky_filepath)
 
+  # TODO: Finish this
+  # Parse METAR properly
+
   data = []
   prev = {}
   for row in sky_df.values:
@@ -82,8 +85,8 @@ def ProcessSky(sky_filepath):
 def ParseWindDirectionDelta(s):
   # Each string is formatted as
   # "Wind variable from XXX degrees to YYY degrees"
-  if not isinstance(s, basestring):
-    return 0
+  #if not isinstance(s, basestring):
+  #  return 0
   in1 = s.index('from ') + 5
   in2 = s.index(' degrees')
   in3 = s.index('to ') + 3
@@ -93,11 +96,11 @@ def ParseWindDirectionDelta(s):
   return (360 + int(s[in3:in4]) - int(s[in1:in2])) % 360
 
 
-def ProcessReportsCombined(main_filepath, t0):
-  main_df = pd.read_csv(main_filepath)
-  main_df['time'] = main_df['date_time_issued'].map(lambda x: util.DateStrToMinutes(x, t0))
-  main_df['is_wind_variable'] = main_df['is_wind_direction_variable'].map(lambda x: 1 if x == 'T' else 0)
-  main_df['wind_direction_delta'] = main_df['variable_wind_direction'].map(ParseWindDirectionDelta)
+def ProcessReportsCombined(ID_FIELD, main_filepath, t0):
+  main_df = pd.read_csv(main_filepath, index_col=ID_FIELD)
+  main_df['time'] = main_df['date_time_issued'].map(lambda x: util.DateStrToMinutes(x, t0), na_action='ignore')
+  main_df['is_wind_variable'] = main_df['is_wind_direction_variable'].map(lambda x: 1 if x == 'T' else 0, na_action='ignore')
+  main_df['wind_direction_delta'] = main_df['variable_wind_direction'].map(ParseWindDirectionDelta, na_action='ignore')
   useful_cols = [ID_FIELD, 'weather_station_code', 'time', 'is_wind_variable', 'wind_gusts',
                  'wind_speed', 'wind_direction_delta', 'visibility', 'temperature', 'dewpoint',
                  'altimeter', 'sea_level_pressure']
@@ -115,11 +118,11 @@ def MergeMETARFiles(base_dir, output_dir, t0):
   runway_filepath = os.path.join(input_dir, 'flightstats_metarrunwaygroups_combined.csv')
   main_filepath = os.path.join(input_dir, 'flightstats_metarreports_combined.csv')
 
-  main_df = ProcessReportsCombined(main_filepath, t0)
-  runway_df = ProcessRunway(ID_FIELD, runway_filepath)
+  main_df = ProcessReportsCombined(ID_FIELD, main_filepath, t0)
+  #runway_df = ProcessRunway(ID_FIELD, runway_filepath)
   sky_df = ProcessSky(sky_filepath)
 
-  main_df = main_df.merge(runway_df)
+  #main_df = main_df.merge(runway_df)
   main_df = main_df.merge(sky_df, on=ID_FIELD)
   main_df.to_csv(os.path.join(output_dir, 'metar_weather.csv'), index=False)
   print 'Converted METAR files for %s' % base_dir

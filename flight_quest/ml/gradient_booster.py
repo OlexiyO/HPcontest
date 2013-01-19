@@ -86,6 +86,7 @@ def LearnGradientBoostInTwoHalves(iX, iy, param_overrides=None, min_steps=10):
     X_1, X_2, y_1, y_2 = _SplitIntoTrainAndTest(X, y, .5)
 
     params = {'n_estimators': 500, 'max_depth': 1, 'min_samples_split': 5,
+              'min_samples_leaf': 5,
               'learn_rate': 0.1, 'loss': 'ls'}
     if param_overrides:
       params.update(param_overrides)
@@ -99,6 +100,7 @@ def LearnGradientBoostInTwoHalves(iX, iy, param_overrides=None, min_steps=10):
     clf2.fit(X_2, y_2)
     step2 = _CutAtBestStep(clf2, X_1, y_1)
     if step1 >= min_steps and step2 >= min_steps:
+      print step1, step2
       return base_predictor.AveragePredictor(clf1, clf2)
     '''
     if step1 >= min_steps:
@@ -111,7 +113,43 @@ def LearnGradientBoostInTwoHalves(iX, iy, param_overrides=None, min_steps=10):
     '''
 
 
-def Train(DF, input_func, output_func, training_filter=None, fname=None, DF_test=None,
+def LearnStochasticGradientBoost(iX, iy, iX_test, iy_test, param_overrides=None, min_steps=10):
+  """Learns a model to approximate iy from iX.
+
+  Args:
+    iX: List of pandas.Series.
+    iy: pandas.Series.
+    param_overrides: Dict of param overrides for GradientBoost algorithm.
+    test_ratio: Which part to put into test set.
+    min_steps: int. If training for any part of the data took more than this number of steps, we retrain.
+
+  Returns:
+    Model.
+  """
+  assert all(len(x) == len(iy) for x in iX), '%s != %d' % (map(len, iX), len(iy))
+
+  X, y = PrepareForTraining(iX, iy)
+  X_test, y_test = PrepareForTraining(iX_test, iy_test)
+
+  L = len(y)
+  #print '%d docs have y defined out of total %d docs' % (L, len(iy))
+
+  while True:
+    params = {'n_estimators': 1500, 'max_depth': 1, 'min_samples_split': 5, 'min_samples_leaf': 5,
+              'learn_rate': 0.1, 'loss': 'ls'}
+    if param_overrides:
+      params.update(param_overrides)
+
+    clf1 = ensemble.GradientBoostingRegressor(**params)
+    clf1.fit(X, y)
+    step1 = _CutAtBestStep(clf1, X_test, y_test)
+    print step1
+    if step1 >= min_steps:
+      return clf1
+
+
+
+def Train(DF, input_func, output_func, param_overrides, training_filter=None, fname=None, DF_test=None,
           min_steps=10):
   """Perform gradient boost training on DFs.
 
@@ -121,6 +159,7 @@ def Train(DF, input_func, output_func, training_filter=None, fname=None, DF_test
         which will be used as input to ML training.
     outut_func: Function, which takes a pd.DataFrame and returns one pd.Series,
         which will be used as target to approximate during ML training.
+    param_overrides: Dictionary to pass to gradient boost trainer.
     training_filter: Function, which takes a pd.DataFrame and returns one pd.Series.
         Output will be used as filter on which elements to use for training.
     fname: (string) If not empty, will save the resulting predictor to file with this name.
@@ -131,21 +170,32 @@ def Train(DF, input_func, output_func, training_filter=None, fname=None, DF_test
     BasePredictor.
   """
   funcs = []
+  param_overrides.setdefault('n_estimators', 1250)
+  S = 3
+  DF_united = DF_test[0]
+  for df in DF_test[1:S]:
+    DF_united = DF_united.append(df)
+
+  test_in = input_func(DF_united)
+  test_out = output_func(DF_united)
+
   for df in DF:
     series_in = input_func(df)
     series_out = output_func(df)
+
     if training_filter:
       computed_filter = training_filter(df)
       series_in = [s[computed_filter] for s in series_in]
       series_out = series_out[training_filter(df)]
-    funcs.append(LearnGradientBoostInTwoHalves(
-        series_in, series_out, param_overrides={'n_estimators': 1250}, min_steps=min_steps))
+    #funcs.append(LearnGradientBoostInTwoHalves(
+    funcs.append(LearnStochasticGradientBoost(
+        series_in, series_out, test_in, test_out, param_overrides=param_overrides, min_steps=min_steps))
   predictor = AveragePredictor(funcs)
   if fname:
     predictor.Save(fname)
-  train_score = PredictRunwayRMSE(DF, predictor, input_func, 'A')
+  train_score = PredictRunwayRMSE(DF, predictor, input_func, name='A')
   if DF_test:
-    test_score = PredictRunwayRMSE(DF_test, predictor, input_func, 'B')
+    test_score = PredictRunwayRMSE(DF_test[S:], predictor, input_func, name='B')
     return predictor, test_score
   else:
     return predictor, train_score
