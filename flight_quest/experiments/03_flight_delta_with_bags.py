@@ -13,14 +13,16 @@ from flight_quest.ml import gradient_booster, base_predictor
 from flight_quest.ml.base_predictor import PostProcessedPredictor
 from flight_quest.ml.cv_util import PredictRunwayRMSE
 from flight_quest.ml.data_util import Transform
+from flight_quest.ml.gradient_booster import MergeDFs
 from flight_quest.util import DirForDate
 
 
 def _TrainModel(MODEL_NAME):
-  DF = []
+  DF_train = []
+  # Test setting here
   for n in range(13, 26):
     fpath = os.path.join(DirForDate('2012-11-%02d' % n), 'model', 'training.csv')
-    DF.append(pd.read_csv(fpath, index_col='flight_history_id'))
+    DF_train.append(pd.read_csv(fpath, index_col='flight_history_id'))
 
   DF_test = []
   for n in range(26, 30):
@@ -35,17 +37,14 @@ def _TrainModel(MODEL_NAME):
   training_filter = lambda df: (df.actual_runway_arrival < df.actual_gate_arrival)
   fname = os.path.join(local_constants.OUTPUT_DIR, '%s.model' % MODEL_NAME)
 
-  best_score = 0
-  best_predictor = None
   param_overrides = {'n_estimators': 1000, 'min_samples_leaf': 5, 'learn_rate': .05}
-  for x in range(3):
-    predictor, score = gradient_booster.TrainOnSeriesOfDF(
-        DF, input_func, output_func, param_overrides, training_filter=training_filter, fname=fname + '_40_%02d' % x,
-        DF_test=DF_test, min_steps=40)
-    if score > best_score:
-      best_predictor, best_score = predictor, score
 
-  return best_predictor, best_score
+  merged_df = MergeDFs(DF_train)
+  merged_test = MergeDFs(DF_test[:5])
+  predictor, score = gradient_booster.TrainWithOOB(
+      merged_df, merged_test, input_func, output_func, param_overrides, training_filter=training_filter,
+      num_bags=20, bag_mods=10)
+  return predictor, score
 
 
 def PrintRMSEs(predictor):
@@ -77,11 +76,12 @@ def PlotPredictor(predictor):
 
 
 def main():
-  MODEL_NAME = 'model3'
+  MODEL_NAME = 'model_03_20'
   # Uncomment this to train model from scratch.
-  #predictor, score = _TrainModel(MODEL_NAME)
-  fname = 'C:/Dev/Kaggle/FlightQuest/models/model3.model_40_04'
-  predictor = base_predictor.LoadPredictor(fname)
+  fname = os.path.join(local_constants.OUTPUT_DIR, MODEL_NAME)
+  predictor, score = _TrainModel(MODEL_NAME)
+  predictor.Save(fname)
+  #predictor = base_predictor.LoadPredictor(fname)
   PlotPredictor(predictor)
   PrintRMSEs(predictor)
   output_util.GenerateOutputCSV(predictor, '%s.output' % MODEL_NAME)
